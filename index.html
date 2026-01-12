@@ -111,9 +111,13 @@
             margin-bottom: 15px;
             font-size: 1.2rem;
         }
+        
     </style>
 </head>
 <body>
+    <video id="myVideo" autoplay playsinline style="width: 100%; border-radius: 15px;"></video>
+<button onclick="startVideo()" class="save-btn">اختبار فتح الكاميرا للاتصال</button>
+
     <div class="container">
         <header>
             <img src="my_photo.jpg" alt="أيقونة فكرة ذكية">
@@ -147,6 +151,7 @@
         <div class="counter-box">
            : <span id="ideasCount">(0)</span>:لديك الان افكار مسجله:
         </div>
+        <input type="text" id="searchInput" onkeyup="searchIdeas()" placeholder="🔍 ابحث عن فكرة مسجلة...">
         <table>
             <thead>
                 <tr>
@@ -265,7 +270,88 @@ statusCell.onclick = function() {
     }
     updateCounter();
 };
+async function startVideo() {
+    try {
+        // طلب الوصول للكاميرا والميكروفون من المتصفح
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        const videoElement = document.getElementById('myVideo');
+        videoElement.srcObject = stream;
+        alert("تم الوصول للكاميرا بنجاح! أنت الآن جاهز لبرمجة الاتصال.");
+    } catch (error) {
+        alert("فشل الوصول: يجب على الشخص الآخر الموافقة على فتح الكاميرا.");
+    }
+}
+function searchIdeas() {
+    let input = document.getElementById("searchInput").value.toLowerCase(); // النص الذي كتبته
+    let table = document.getElementById("ideastable");
+    let tr = table.getElementsByTagName("tr"); // جلب كل صفوف الجدول
+
+    for (let i = 0; i < tr.length; i++) {
+        let td = tr[i].getElementsByTagName("td")[0]; // خلية "اسم الفكرة"
+        if (td) {
+            let txtValue = td.textContent || td.innerText;
+            if (txtValue.toLowerCase().indexOf(input) > -1) {
+                tr[i].style.display = ""; // إظهار الصف إذا تطابق البحث
+            } else {
+                tr[i].style.display = "none"; // إخفاء الصف إذا لم يتطابق
+            }
+        }
+    }
+}
+</script>
+</body>
+</html>
+                text: table.rows[i].cells[0].innerHTML,
+                date: table.rows[i].cells[1].innerHTML,
+                status: table.rows[i].cells[2].innerHTML
+            });
+        }
+        localStorage.setItem("myStorageIdeas", JSON.stringify(ideasArray));
+    }
+
+    // 5. وظيفة المسح (مستقلة)
+    function clearAllIdeas() {
+        if (confirm("هل تريد مسح كل الأفكار نهائياً؟")) {
+            localStorage.clear();
+            document.getElementById("ideastable").innerHTML = "";
+            updateCounter();
+            alert("تم تنظيف الجدول والذاكرة بنجاح!");
+        }
+    }
+
+    // 6. استرجاع البيانات عند تحميل الصفحة
+    window.onload = function() {
+    let data = localStorage.getItem("myStorageIdeas");
+    if (data) {
+        let ideas = JSON.parse(data);
+        let table = document.getElementById("ideastable");
+        ideas.forEach(idea => {
+            let row = table.insertRow();
+            row.insertCell(0).innerText = idea.text;
+            row.insertCell(1).innerText = idea.date;
+            
+            let statusCell = row.insertCell(2);
+            statusCell.innerText = idea.status;
+            statusCell.style.cursor = "pointer";
+
+            // إضافة خاصية النقر للأفكار المسترجعة من الذاكرة
+            statusCell.onclick = function() {
+                // نفس كود التغيير بالأعلى
+                if (this.innerText === "🆕 قيد التنفيذ") {
+                    this.innerText = "✅ تم الإنجاز";
+                    this.style.color = "green";
+                } else {
+                    this.innerText = "🆕 قيد التنفيذ";
+                    this.style.color = "black";
+                }
+                saveAllIdeas();
+            };
+        });
+    }
+    updateCounter();
+};
 </script>
 </body>
 
 </html>
+
