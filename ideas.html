@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>مستودع الأفكار الذكي - زيد</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* أبقينا فقط الخط الأساسي لأن Tailwind لا يتحكم بالخطوط الخارجية تلقائياً */
+        body { font-family: 'Cairo', sans-serif; }
+    </style>
+</head>
+
+<body class="bg-slate-100 text-gray-800 p-4 md:p-10">
+
+    <div class="max-w-3xl mx-auto bg-white shadow-2xl rounded-3xl overflow-hidden border border-gray-100">
+        
+        <header class="bg-blue-600 p-8 text-center text-white">
+            <img src="my_photo.jpg" alt="زيد عبيد" 
+                 class="w-32 h-32 rounded-2xl mx-auto border-4 border-white shadow-xl transform hover:scale-110 transition duration-300">
+            <h1 class="text-3xl font-bold mt-4">مستودع أفكاري لعام 2026</h1>
+            <p class="text-blue-100 mt-2">أهلاً بك! أنا المبرمج زيد.. في رحلتي البرمجية.</p>
+        </header>
+
+        <div class="p-6 md:p-10 space-y-8">
+            
+            <section class="text-center">
+                <video id="myVideo" autoplay playsinline class="hidden w-full rounded-2xl border-4 border-blue-500 bg-black shadow-inner mb-4"></video>
+                <button onclick="startVideo()" 
+                        class="w-full bg-cyan-500 hover:bg-cyan-600 text-white font-bold py-3 rounded-xl shadow-lg transition duration-300 transform active:scale-95">
+                    📸 اختبار فتح الكاميرا للاتصال
+                </button>
+            </section>
+
+            <hr class="border-gray-100">
+
+            <section>
+                <h2 class="text-xl font-bold text-gray-700 mb-4 flex items-center">
+                    <span class="bg-blue-100 p-2 rounded-lg ml-2">💡</span> إضافة فكرة جديدة:
+                </h2>
+                <form id="ideaForm" class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-600 mb-1">اسم الفكرة:</label>
+                        <input type="text" id="ideaInput" placeholder="اكتب فكرتك هنا..." 
+                               class="w-full p-3 rounded-xl border-2 border-gray-100 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-600 mb-1">تاريخ البدء:</label>
+                        <input type="date" id="dateinput" 
+                               class="w-full p-3 rounded-xl border-2 border-gray-100 focus:border-blue-500 outline-none transition">
+                    </div>
+                    
+                    <div class="flex flex-col md:flex-row gap-3">
+                        <button type="button" onclick="addIdea()" 
+                                class="flex-1 bg-green-500 hover:bg-green-600 text-white font-bold py-3 rounded-xl shadow-md transition transform active:scale-95">
+                            💾 حفظ الفكرة في المستودع
+                        </button>
+                        <button type="button" onclick="clearAllIdeas()" 
+                                class="bg-red-50 hover:bg-red-500 text-red-500 hover:text-white font-bold py-3 px-6 rounded-xl transition duration-300">
+                            🗑️ مسح الكل
+                        </button>
+                    </div>
+                </form>
+            </section>
+
+            <hr class="border-gray-100">
+
+            <section>
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-xl font-bold text-gray-700">📋 قائمة الأفكار:</h2>
+                    <div class="bg-blue-600 text-white px-4 py-1 rounded-full text-sm shadow-md">
+                        لديك <span id="ideasCount">0</span> أفكار
+                    </div>
+                </div>
+
+                <input type="text" id="searchInput" onkeyup="searchIdeas()" placeholder="🔍 ابحث عن فكرة معينة..." 
+                       class="w-full p-3 mb-6 rounded-xl bg-gray-50 border-none focus:ring-2 focus:ring-blue-400 outline-none shadow-inner">
+
+                <div class="overflow-hidden rounded-2xl border border-gray-100 shadow-xl">
+                    <table class="w-full text-right border-collapse">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="p-4 text-gray-600 font-bold">اسم الفكرة</th>
+                                <th class="p-4 text-gray-600 font-bold">التاريخ</th>
+                                <th class="p-4 text-gray-600 font-bold">الحالة</th>
+                            </tr>
+                        </thead>
+                        <tbody id="ideastable" class="divide-y divide-gray-50">
+                            </tbody>
+                    </table>
+                </div>
+            </section>
+        </div>
+    </div>
+<script>
+    // --- 1. العداد: وظيفتها حساب عدد الأفكار الموجودة في "الخزانة" وعرضها للمستخدم ---
+    function updateCounter() {
+        // نفتح الخزانة (localStorage) ونجلب البيانات
+        const data = localStorage.getItem("myStorageIdeas");
+        // إذا كانت الخزانة فارغة نضع 0، وإذا كان فيها بيانات نحولها لقائمة ونحسب طولها
+        const count = data ? JSON.parse(data).length : 0;
+        // نضع الرقم في المكان المخصص له على الشاشة
+        document.getElementById("ideasCount").innerText = count;
+    }
+
+    // --- 2. بناء الصف (المصنع): تأخذ بيانات فكرة واحدة وتحولها لـ صف في الجدول (HTML) ---
+    function createRow(text, date, status, index) {
+        const tableBody = document.getElementById("ideastable");
+        const row = tableBody.insertRow(); // إنشاء صف جديد
+        row.className = "hover:bg-blue-50 transition border-b border-gray-100";
+
+        // الخلية 1 (اسم الفكرة): جعلناها قابلة للتعديل عند الضغط
+        const c1 = row.insertCell(0);
+        c1.innerText = text;
+        c1.className = "p-4 font-bold text-gray-700 text-right cursor-pointer hover:text-blue-600 transition duration-200";
+        c1.onclick = () => editIdeaName(index); // عند الضغط، نادِ دالة التعديل وأخبرها برقم الصف (index)
+
+        // الخلية 2 (التاريخ): عرض التاريخ المدخل
+        const c2 = row.insertCell(1);
+        c2.innerText = date;
+        c2.className = "p-4 text-gray-500 text-sm text-right";
+
+        // الخلية 3 (الحالة والحذف): تحتوي على الحالة (قيد التنفيذ/تم) وزر المسح
+        const c3 = row.insertCell(2);
+        c3.className = "p-4 flex items-center justify-between gap-2";
+        
+        // جزء الحالة (Span)
+        const statusSpan = document.createElement("span");
+        statusSpan.innerText = status;
+        statusSpan.className = "cursor-pointer transition-all";
+        // إذا كانت الكلمة تحتوي على "تم الإنجاز" اجعل لونها أخضر
+        if(status.includes("تم الإنجاز")) statusSpan.classList.add("text-green-500", "font-bold");
+
+        // زر الحذف (سلة المهملات)
+        const deleteBtn = document.createElement("button");
+        deleteBtn.innerHTML = "🗑️";
+        deleteBtn.className = "text-red-400 hover:scale-125 transition transform p-1";
+        deleteBtn.onclick = (e) => {
+            e.stopPropagation(); // منع تداخل الضغطات (لا تفتح التعديل عند الحذف)
+            deleteOneIdea(index);
+        };
+
+        c3.appendChild(statusSpan); // إضافة الحالة للخلية
+        c3.appendChild(deleteBtn); // إضافة زر الحذف للخلية
+        
+        // عند الضغط على الحالة، نادِ دالة تبديل الحالة
+        statusSpan.onclick = (e) => {
+            e.stopPropagation();
+            toggleStatus(index);
+        };
+    }
+
+    // --- 3. التعديل (Update): وظيفتها تغيير الاسم فقط في الذاكرة ثم تحديث الشاشة ---
+    function editIdeaName(index) {
+        const data = JSON.parse(localStorage.getItem("myStorageIdeas")); // جلب البيانات
+        const currentName = data[index].text; // معرفة الاسم الحالي
+        
+        const newName = prompt("أدخل الاسم الجديد للفكرة:", currentName); // سؤال المستخدم
+        
+        if (newName !== null && newName.trim() !== "") {
+            data[index].text = newName.trim(); // تحديث الاسم في المصفوفة
+            localStorage.setItem("myStorageIdeas", JSON.stringify(data)); // حفظ التعديل في الخزانة
+            renderTable(); // إعادة رسم الجدول ليظهر الاسم الجديد
+        }
+    }
+
+    // --- 4. الرسم (Render): مسح الجدول القديم ورسمه من جديد بناءً على الذاكرة ---
+    function renderTable() {
+        const tableBody = document.getElementById("ideastable");
+        tableBody.innerHTML = ""; // تنظيف الجدول تماماً
+        // جلب البيانات من الخزانة، وإذا كانت فارغة نستخدم مصفوفة فارغة []
+        const data = JSON.parse(localStorage.getItem("myStorageIdeas")) || [];
+        // لكل فكرة في القائمة، مررها للمصنع (createRow)
+        data.forEach((idea, index) => {
+            createRow(idea.text, idea.date, idea.status, index);
+        });
+        updateCounter(); // تحديث رقم العداد
+    }
+
+    // --- 5. الإضافة (Create): تأخذ الكلام من المربعات وتضعه في الذاكرة ---
+    function addIdea() {
+        const input = document.getElementById("ideaInput");
+        const dateInput = document.getElementById("dateinput");
+        
+        if (!input.value || !dateInput.value) {
+            alert("يرجى ملء الاسم والتاريخ!");
+            return;
+        }
+
+        const data = JSON.parse(localStorage.getItem("myStorageIdeas")) || [];
+        // إضافة الفكرة الجديدة لنهاية المصفوفة
+        data.push({ text: input.value, date: dateInput.value, status: "🆕 قيد التنفيذ" });
+        // حفظ القائمة المحدثة في الخزانة
+        localStorage.setItem("myStorageIdeas", JSON.stringify(data));
+        
+        renderTable(); // إعادة الرسم فوراً
+        input.value = ""; // مسح المربعات لتبدو جاهزة لكتابة فكرة أخرى
+        dateInput.value = "";
+    }
+
+    // --- 6. تبديل الحالة: تغير بين (قيد التنفيذ) و (تم الإنجاز) ---
+    function toggleStatus(index) {
+        const data = JSON.parse(localStorage.getItem("myStorageIdeas"));
+        // تبديل النص بناءً على النص الحالي
+        data[index].status = data[index].status.includes("قيد التنفيذ") 
+            ? "✅ تم الإنجاز" 
+            : "🆕 قيد التنفيذ";
+        localStorage.setItem("myStorageIdeas", JSON.stringify(data));
+        renderTable(); // إعادة الرسم لتحديث الألوان
+    }
+
+    // --- 7. الحذف (Delete): تمسح فكرة واحدة من القائمة بناءً على ترتيبها ---
+    function deleteOneIdea(index) {
+        if (confirm("هل تريد حذف هذه الفكرة نهائياً؟")) {
+            const data = JSON.parse(localStorage.getItem("myStorageIdeas"));
+            data.splice(index, 1); // مسح عنصر واحد من المصفوفة
+            localStorage.setItem("myStorageIdeas", JSON.stringify(data));
+            renderTable(); // إعادة رسم الجدول
+        }
+    }
+
+    // --- 8. البحث: فلترة الصفوف بناءً على ما يكتبه المستخدم في مربع البحث ---
+    function searchIdeas() {
+        const searchText = document.getElementById("searchInput").value.toLowerCase();
+        const rows = document.getElementById("ideastable").getElementsByTagName("tr");
+        for (let row of rows) {
+            // قارن النص المكتوب مع النص الموجود في أول خلية (اسم الفكرة)
+            const textMatch = row.cells[0].innerText.toLowerCase().includes(searchText);
+            row.style.display = textMatch ? "" : "none"; // أظهر الصف أو اخفه
+        }
+    }
+
+    // --- 9. مسح الكل والكاميرا ---
+    function clearAllIdeas() {
+        if (confirm("هل تريد مسح جميع البيانات؟")) {
+            localStorage.removeItem("myStorageIdeas"); // تفريغ الخزانة تماماً
+            renderTable();
+        }
+    }
+
+    async function startVideo() {
+        const video = document.getElementById('myVideo');
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+            video.srcObject = stream;
+            video.classList.remove('hidden');
+        } catch (err) { alert("تعذر تشغيل الكاميرا"); }
+    }
+
+    // عند تحميل الصفحة لأول مرة، ارسم الجدول
+    window.onload = renderTable;
+</script>
+</body>
+</html>
