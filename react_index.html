@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>دردشة زيد الاحترافية</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        body { font-family: system-ui, -apple-system, sans-serif; overflow: hidden; }
+        .chat-height { height: calc(100vh - 180px); }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        function App() {
+            const [myId, setMyId] = useState("");
+            const [friendId, setFriendId] = useState("");
+            const [peer, setPeer] = useState(null);
+            const [conn, setConn] = useState(null);
+            const [messages, setMessages] = useState([]);
+            const [input, setInput] = useState("");
+            const [status, setStatus] = useState("جاري جلب المعرف...");
+            const messagesEndRef = useRef(null);
+
+            useEffect(() => {
+                const newPeer = new Peer(undefined, {
+                    host: '0.peerjs.com',
+                    port: 443,
+                    secure: true,
+                    path: '/'
+                });
+
+                newPeer.on('open', (id) => {
+                    setMyId(id);
+                    setStatus("جاهز للاتصال ✅");
+                });
+
+                newPeer.on('connection', (connection) => {
+                    setConn(connection);
+                    setStatus("متصل الآن ✅");
+                    connection.on('data', (data) => {
+                        setMessages(prev => [...prev, { ...data, type: 'received' }]);
+                    });
+                });
+
+                newPeer.on('error', (err) => {
+                    console.error(err);
+                    setStatus("خطأ: " + err.type);
+                });
+
+                setPeer(newPeer);
+                return () => newPeer.destroy();
+            }, []);
+
+            useEffect(() => {
+                messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+            }, [messages]);
+
+            const connect = () => {
+                if (!friendId.trim()) return;
+                setStatus("جاري طلب الاتصال...");
+                const connection = peer.connect(friendId.trim());
+                connection.on('open', () => {
+                    setConn(connection);
+                    setStatus("متصل الآن ✅");
+                });
+                connection.on('data', (data) => {
+                    setMessages(prev => [...prev, { ...data, type: 'received' }]);
+                });
+            };
+
+            const send = () => {
+                if (conn && input.trim()) {
+                    const msg = { text: input, time: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) };
+                    conn.send(msg);
+                    setMessages(prev => [...prev, { ...msg, type: 'sent' }]);
+                    setInput("");
+                }
+            };
+
+            const copyId = () => {
+                navigator.clipboard.writeText(myId);
+                alert("تم نسخ المعرف بنجاح!");
+            };
+
+            return (
+                <div className="flex flex-col h-screen max-w-md mx-auto bg-white shadow-2xl overflow-hidden">
+                    {/* Header */}
+                    <div className="bg-blue-600 p-4 text-white shrink-0">
+                        <div className="flex justify-between items-center mb-2">
+                            <h1 className="font-bold text-lg">دردشة زيد</h1>
+                            <span className="text-[10px] bg-blue-500 px-2 py-1 rounded-full">{status}</span>
+                        </div>
+                        <div className="bg-blue-700 p-2 rounded flex justify-between items-center text-[10px]">
+                            <span className="truncate flex-1">معرفك: {myId || "انتظر..."}</span>
+                            <button onClick={copyId} className="bg-white text-blue-600 px-2 py-1 rounded font-bold mr-2">نسخ</button>
+                        </div>
+                    </div>
+
+                    {/* Messages */}
+                    <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50">
+                        {messages.map((m, i) => (
+                            <div key={i} className={`flex ${m.type === 'sent' ? 'justify-end' : 'justify-start'}`}>
+                                <div className={`max-w-[85%] p-3 rounded-2xl shadow-sm ${m.type === 'sent' ? 'bg-blue-600 text-white rounded-tr-none' : 'bg-white text-gray-800 rounded-tl-none border'}`}>
+                                    <p className="text-sm">{m.text}</p>
+                                    <p className={`text-[9px] mt-1 ${m.type === 'sent' ? 'text-blue-200' : 'text-gray-400'}`}>{m.time}</p>
+                                </div>
+                            </div>
+                        ))}
+                        <div ref={messagesEndRef} />
+                    </div>
+
+                    {/* Footer / Inputs */}
+                    <div className="p-3 bg-white border-t shrink-0 pb-6">
+                        {!conn && (
+                            <div className="flex gap-2 mb-2">
+                                <input 
+                                    className="flex-1 p-2 text-xs border rounded outline-none"
+                                    placeholder="الصق كود الصديق..."
+                                    value={friendId}
+                                    onChange={(e) => setFriendId(e.target.value)}
+                                />
+                                <button onClick={connect} className="bg-green-500 text-white px-3 py-1 rounded text-xs">اتصال</button>
+                            </div>
+                        )}
+                        <div className="flex gap-2">
+                            <input 
+                                className="flex-1 p-3 bg-gray-100 rounded-full outline-none text-sm"
+                                placeholder="اكتب رسالة..."
+                                value={input}
+                                onChange={(e) => setInput(e.target.value)}
+                                onKeyPress={(e) => e.key === 'Enter' && send()}
+                            />
+                            <button onClick={send} className="bg-blue-600 text-white w-12 h-12 rounded-full flex items-center justify-center">
+                                <i className="fas fa-paper-plane"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
