@@ -1,10 +1,9 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>دردشة زيد العالمية 🚀</title>
+    <title>دردشة زيد - غرف خاصة 🔒</title>
 
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
@@ -15,25 +14,11 @@
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
     <style>
-        body,
-        html {
-            overflow: hidden;
-            height: 100%;
-            font-family: sans-serif;
-        }
-
-        /* إخفاء شريط السحب لجعل التصميم أنيقاً */
-        .no-scrollbar::-webkit-scrollbar {
-            display: none;
-        }
-
-        .no-scrollbar {
-            -ms-overflow-style: none;
-            scrollbar-width: none;
-        }
+        body, html { overflow: hidden; height: 100%; font-family: sans-serif; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
 </head>
-
 <body class="bg-gray-100">
     <div id="root"></div>
 
@@ -52,9 +37,9 @@
         const db = firebase.database();
 
         function App() {
-            // 1. استخراج "معرف الغرفة" من رابط الموقع تلقائياً
+            // استخراج معرف الغرفة من الرابط
             const urlParams = new URLSearchParams(window.location.search);
-            const roomId = urlParams.get('room') || 'general'; // إذا لم يوجد رقم، يدخل العام
+            const roomId = urlParams.get('room') || 'general';
 
             const [isLoggedIn, setIsLoggedIn] = React.useState(false);
             const [myName, setMyName] = React.useState("");
@@ -64,25 +49,36 @@
             const messagesEndRef = React.useRef(null);
 
             React.useEffect(() => {
-                // 2. تغيير مسار السحاب ليكون خاصاً بهذه الغرفة فقط
-                const messagesRef = firebase.database().ref('chats/' + roomId);
-
+                // الاتصال بمسار الغرفة المحددة فقط
+                const messagesRef = db.ref('chats/' + roomId);
                 messagesRef.on('value', (snapshot) => {
                     const data = snapshot.val();
                     if (data) setMessages(Object.values(data));
-                    else setMessages([]); // إذا الغرفة جديدة وفارغة
+                    else setMessages([]);
                 });
 
                 const peer = new Peer();
                 peer.on('open', (id) => setPeerId(id));
-            }, [roomId]); // التحديث لو تغيرت الغرفة
+            }, [roomId]);
+
+            React.useEffect(() => {
+                messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+            }, [messages]);
+
+            const handleLogin = () => {
+                if (myName.trim() !== "") setIsLoggedIn(true);
+            };
+
+            const createPrivateRoom = () => {
+                const randomId = Math.random().toString(36).substring(2, 10);
+                const newUrl = window.location.origin + window.location.pathname + '?room=' + randomId;
+                window.location.href = newUrl; // الانتقال للغرفة الجديدة
+            };
 
             const handleSend = () => {
                 if (inputValue.trim() === "") return;
                 const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
-                // 3. الحفظ في مسار الغرفة الخاصة
-                firebase.database().ref('chats/' + roomId).push({
+                db.ref('chats/' + roomId).push({
                     text: inputValue,
                     time: time,
                     senderName: myName,
@@ -93,17 +89,25 @@
 
             if (!isLoggedIn) {
                 return (
-                    <div className="flex flex-col items-center justify-center h-screen bg-indigo-600 p-6">
+                    <div className="flex flex-col items-center justify-center h-screen bg-slate-900 p-6">
                         <div className="bg-white p-8 rounded-3xl shadow-2xl w-full max-w-sm text-center">
-                            <h2 className="text-2xl font-bold mb-6 text-gray-800">دردشة زيد 🌍</h2>
+                            <h2 className="text-2xl font-bold mb-2 text-gray-800">مرحباً بك 👋</h2>
+                            <p className="text-xs text-gray-500 mb-6">
+                                {roomId === 'general' ? "أنت تدخل الدردشة العامة" : `أنت تدخل غرفة خاصة: ${roomId}`}
+                            </p>
                             <input
-                                className="w-full p-4 border-2 border-gray-100 rounded-xl mb-4 outline-none focus:border-indigo-500 transition-all text-center"
-                                placeholder="أدخل اسمك للدخول..."
+                                className="w-full p-4 border-2 border-gray-100 rounded-xl mb-4 outline-none focus:border-blue-500 text-center"
+                                placeholder="اكتب اسمك هنا..."
                                 value={myName}
                                 onChange={(e) => setMyName(e.target.value)}
-                                onKeyPress={(e) => e.key === 'Enter' && handleLogin()}
                             />
-                            <button onClick={handleLogin} className="w-full bg-indigo-600 text-white p-4 rounded-xl font-bold shadow-lg">دخول الآن 🚀</button>
+                            <button onClick={handleLogin} className="w-full bg-blue-600 text-white p-4 rounded-xl font-bold mb-3">دخول 🚀</button>
+                            
+                            <div className="border-t pt-4 mt-2">
+                                <button onClick={createPrivateRoom} className="text-blue-600 text-sm font-medium hover:underline">
+                                    إنشاء غرفة خاصة جديدة 🔒
+                                </button>
+                            </div>
                         </div>
                     </div>
                 );
@@ -111,34 +115,53 @@
 
             return (
                 <div className="flex flex-col h-[100dvh] w-full max-w-md mx-auto bg-white border-x shadow-2xl">
-                    <div className="bg-indigo-600 p-4 text-white text-center shadow-md z-10">
-                        <h1 className="font-bold text-lg">أهلاً {myName} 👋</h1>
-                        <p className="text-[10px] opacity-70">المحادثة السحابية نشطة</p>
+                    <div className="bg-slate-900 p-4 text-white shadow-md z-10">
+                        <div className="flex justify-between items-center">
+                            <div className="text-right">
+                                <h1 className="font-bold text-sm">أهلاً {myName}</h1>
+                                <p className="text-[9px] text-blue-400">
+                                    {roomId === 'general' ? "الدردشة العامة" : "غرفة خاصة آمنة"}
+                                </p>
+                            </div>
+                            {roomId !== 'general' && (
+                                <button 
+                                    onClick={() => {
+                                        navigator.clipboard.writeText(window.location.href);
+                                        alert("تم نسخ رابط الغرفة! أرسله لصديقك.");
+                                    }}
+                                    className="bg-blue-600 text-[10px] px-3 py-1 rounded-full"
+                                >
+                                    نسخ رابط الغرفة 🔗
+                                </button>
+                            )}
+                        </div>
                     </div>
 
-                    <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-indigo-50 no-scrollbar">
+                    <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50 no-scrollbar">
+                        {messages.length === 0 && (
+                            <div className="text-center mt-10 text-gray-400 text-xs italic">لا توجد رسائل هنا بعد.. ابدأ المحادثة!</div>
+                        )}
                         {messages.map((m, i) => (
                             <div key={i} className={`flex ${m.senderId === peerId ? "justify-end" : "justify-start"}`}>
-                                <div className={`max-w-[85%] p-3 rounded-2xl shadow-sm ${m.senderId === peerId ? "bg-indigo-600 text-white rounded-br-none" : "bg-white text-gray-800 border rounded-bl-none"}`}>
+                                <div className={`max-w-[85%] p-3 rounded-2xl shadow-sm ${m.senderId === peerId ? "bg-blue-600 text-white rounded-br-none" : "bg-white text-gray-800 border rounded-bl-none"}`}>
                                     <p className="text-[10px] font-bold mb-1 opacity-70">{m.senderName}</p>
-                                    <p className="text-[15px]">{m.text}</p>
-                                    <span className="text-[9px] opacity-50 block mt-1">{m.time}</span>
+                                    <p className="text-[14px] leading-relaxed">{m.text}</p>
+                                    <span className="text-[8px] opacity-50 block mt-1">{m.time}</span>
                                 </div>
                             </div>
                         ))}
-                        {/* 3. النقطة المرجعية التي يسحبنا المتصفح إليها */}
                         <div ref={messagesEndRef} />
                     </div>
 
                     <div className="p-4 bg-white border-t flex gap-2 pb-8 items-center">
                         <input
-                            className="flex-1 p-3 bg-gray-100 rounded-full outline-none text-sm px-5 border focus:border-indigo-300 transition-all"
+                            className="flex-1 p-3 bg-gray-100 rounded-full outline-none text-sm px-5 border focus:border-blue-300 transition-all"
                             value={inputValue}
                             onChange={(e) => setInputValue(e.target.value)}
                             onKeyPress={(e) => e.key === 'Enter' && handleSend()}
                             placeholder="اكتب رسالة..."
                         />
-                        <button onClick={handleSend} className="bg-indigo-600 text-white w-12 h-12 rounded-full shadow-lg flex items-center justify-center active:scale-90 transition-transform">
+                        <button onClick={handleSend} className="bg-blue-600 text-white w-12 h-12 rounded-full shadow-lg flex items-center justify-center active:scale-90 transition-transform">
                             🚀
                         </button>
                     </div>
@@ -150,5 +173,4 @@
         root.render(<App />);
     </script>
 </body>
-
 </html>
