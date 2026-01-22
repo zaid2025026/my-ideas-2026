@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
+
 <head>
     <meta charset="UTF-8">
     <title>تطبيق زيد العالمي 🌍</title>
@@ -9,6 +10,7 @@
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 </head>
+
 <body class="bg-gray-100">
     <div id="root"></div>
     <script type="text/babel">
@@ -24,10 +26,10 @@
             React.useEffect(() => {
                 const peer = new Peer();
                 peer.on('open', (id) => setPeerId(id));
-                
+
                 peer.on('connection', (conn) => {
                     conn.on('data', (data) => {
-                        const time = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                        const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
                         setMessages(prev => [...prev, { text: data, time: time, sender: "صديقي" }]);
                     });
                 });
@@ -35,17 +37,28 @@
             }, []);
 
             const handleSend = () => {
-                if (inputValue.trim() === "" || remoteId.trim() === "") return;
+                if (inputValue.trim() === "" || remoteId.trim() === "") {
+                    alert("تأكد من كتابة رسالة ووضع عنوان الصديق!");
+                    return;
+                }
 
+                // 1. إنشاء طلب الاتصال بالصديق
                 const conn = peerInstance.current.connect(remoteId);
+
+                // 2. الانتظار حتى تفتح القناة بنجاح ثم الإرسال
                 conn.on('open', () => {
-                    conn.send(inputValue);
-                    const time = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-                    setMessages([...messages, { text: inputValue, time: time, sender: "أنا" }]);
+                    conn.send(inputValue); // الإرسال الآن بعد التأكد من الربط
+
+                    const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                    setMessages(prev => [...prev, { text: inputValue, time: time, sender: "أنا" }]);
                     setInputValue("");
                 });
-            };
 
+                // 3. في حال كان العنوان خطأ أو الصديق غير موجود
+                conn.on('error', (err) => {
+                    alert("تعذر الاتصال بهذا العنوان، تأكد من صحته!");
+                });
+            };
             return (
                 <div className="flex flex-col h-screen max-w-md mx-auto bg-white shadow-2xl border-x border-gray-200">
                     {/* رأس التطبيق */}
@@ -58,8 +71,8 @@
 
                     {/* منطقة الاتصال بالصديق */}
                     <div className="p-2 bg-gray-50 border-b">
-                        <input 
-                            className="w-full p-2 text-xs border rounded outline-none focus:border-blue-500" 
+                        <input
+                            className="w-full p-2 text-xs border rounded outline-none focus:border-blue-500"
                             placeholder="أدخل عنوان الصديق هنا لبدء الدردشة..."
                             value={remoteId}
                             onChange={(e) => setRemoteId(e.target.value)}
@@ -83,14 +96,14 @@
 
                     {/* صندوق الإدخال */}
                     <div className="p-3 bg-white border-t flex gap-2 items-center">
-                        <input 
-                            className="flex-1 p-2 bg-gray-100 rounded-full outline-none text-sm px-4 focus:bg-gray-200 transition-all" 
+                        <input
+                            className="flex-1 p-2 bg-gray-100 rounded-full outline-none text-sm px-4 focus:bg-gray-200 transition-all"
                             value={inputValue}
                             onChange={(e) => setInputValue(e.target.value)}
                             onKeyPress={(e) => e.key === 'Enter' && handleSend()}
                             placeholder="اكتب رسالتك..."
                         />
-                        <button 
+                        <button
                             onClick={handleSend}
                             className="bg-blue-600 hover:bg-blue-700 text-white w-10 h-10 rounded-full flex items-center justify-center transition-transform active:scale-90"
                         >
@@ -105,4 +118,5 @@
         root.render(<App />);
     </script>
 </body>
+
 </html>
