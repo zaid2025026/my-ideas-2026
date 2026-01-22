@@ -3,10 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>WhatsApp Zaid 🟢</title>
+    <title>Zaid Super Chat | فيديو وصوت ⚡</title>
 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
@@ -16,16 +15,16 @@
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
     <style>
-        body, html { overflow: hidden; height: 100%; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body, html { height: 100%; overflow: hidden; font-family: 'Segoe UI', sans-serif; background: #0f172a; }
+        .bg-gradient { background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); }
+        .glass { background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(15px); border: 1px solid rgba(255, 255, 255, 0.1); }
+        .my-msg { background: linear-gradient(135deg, #3b82f6, #8b5cf6); border-radius: 20px 20px 4px 20px; }
+        .other-msg { background: rgba(255, 255, 255, 0.1); border-radius: 20px 20px 20px 4px; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
-        /* خلفية واتساب الشهيرة */
-        .chat-bg {
-            background-color: #e5ddd5;
-            background-image: url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png');
-        }
+        video { object-fit: cover; transform: scaleX(-1); } /* قلب الكاميرا لتكون كالمرآة */
     </style>
 </head>
-<body class="bg-gray-200">
+<body class="bg-gradient text-white">
     <div id="root"></div>
 
     <script type="text/babel">
@@ -50,108 +49,152 @@
             const [myName, setMyName] = React.useState("");
             const [messages, setMessages] = React.useState([]);
             const [inputValue, setInputValue] = React.useState("");
-            const [peerId, setPeerId] = React.useState("");
+            const [myPeerId, setMyPeerId] = React.useState("");
+            const [stream, setStream] = React.useState(null);
+            const [remoteStream, setRemoteStream] = React.useState(null);
+            
+            const peerInstance = React.useRef(null);
+            const myVideoRef = React.useRef(null);
+            const remoteVideoRef = React.useRef(null);
             const messagesEndRef = React.useRef(null);
 
             React.useEffect(() => {
+                const peer = new Peer();
+                peer.on('open', (id) => setMyPeerId(id));
+
+                // استقبال المكالمات
+                peer.on('call', (call) => {
+                    if(confirm("لديك مكالمة واردة.. هل تريد الرد؟")) {
+                        navigator.mediaDevices.getUserMedia({ video: true, audio: true }).then((s) => {
+                            setStream(s);
+                            if(myVideoRef.current) myVideoRef.current.srcObject = s;
+                            call.answer(s);
+                            call.on('stream', (remoteS) => {
+                                setRemoteStream(remoteS);
+                                if(remoteVideoRef.current) remoteVideoRef.current.srcObject = remoteS;
+                            });
+                        });
+                    }
+                });
+
+                peerInstance.current = peer;
+
                 const messagesRef = db.ref('chats/' + roomId);
                 messagesRef.on('value', (snapshot) => {
                     const data = snapshot.val();
                     if (data) setMessages(Object.values(data));
                 });
-                const peer = new Peer();
-                peer.on('open', (id) => setPeerId(id));
             }, [roomId]);
 
             React.useEffect(() => {
                 messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
             }, [messages]);
 
-            const handleLogin = () => { if (myName.trim() !== "") setIsLoggedIn(true); };
+            const startCall = async (withVideo) => {
+                const friendId = prompt("أدخل معرف (ID) الصديق للاتصال به:");
+                if (!friendId) return;
+
+                const s = await navigator.mediaDevices.getUserMedia({ video: withVideo, audio: true });
+                setStream(s);
+                if(myVideoRef.current) myVideoRef.current.srcObject = s;
+
+                const call = peerInstance.current.call(friendId, s);
+                call.on('stream', (remoteS) => {
+                    setRemoteStream(remoteS);
+                    if(remoteVideoRef.current) remoteVideoRef.current.srcObject = remoteS;
+                });
+            };
+
+            const endCall = () => {
+                stream?.getTracks().forEach(t => t.stop());
+                setStream(null);
+                setRemoteStream(null);
+            };
 
             const handleSend = () => {
-                if (inputValue.trim() === "") return;
+                if (!inputValue.trim()) return;
                 const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
                 db.ref('chats/' + roomId).push({
                     text: inputValue,
-                    time: time,
+                    time,
                     senderName: myName,
-                    senderId: peerId
+                    senderId: myPeerId
                 });
                 setInputValue("");
             };
 
             if (!isLoggedIn) {
                 return (
-                    <div className="flex flex-col items-center justify-center h-screen bg-[#075e54] p-6">
-                        <div className="bg-white p-8 rounded-lg shadow-xl w-full max-w-sm text-center">
-                            <i className="fab fa-whatsapp text-6xl text-[#25d366] mb-4"></i>
-                            <h2 className="text-xl font-bold mb-6 text-gray-700">واتساب زيد 🟢</h2>
-                            <input
-                                className="w-full p-3 border-b-2 border-[#25d366] mb-6 outline-none text-center"
-                                placeholder="أدخل اسمك..."
-                                value={myName}
-                                onChange={(e) => setMyName(e.target.value)}
-                            />
-                            <button onClick={handleLogin} className="w-full bg-[#25d366] text-white p-3 rounded shadow-md font-bold uppercase tracking-wider">ابدأ الدردشة</button>
+                    <div className="flex flex-col items-center justify-center h-screen p-6">
+                        <div className="glass p-10 rounded-[40px] w-full max-w-sm text-center shadow-2xl">
+                            <div className="w-20 h-20 bg-blue-500 rounded-3xl mx-auto mb-6 flex items-center justify-center shadow-lg">
+                                <i className="fas fa-video text-3xl"></i>
+                            </div>
+                            <h2 className="text-2xl font-bold mb-6">Zaid Premium Chat</h2>
+                            <input className="w-full p-4 bg-white/10 rounded-2xl mb-4 outline-none border border-white/10 text-center" placeholder="أدخل اسمك" value={myName} onChange={(e)=>setMyName(e.target.value)} />
+                            <button onClick={()=>myName && setIsLoggedIn(true)} className="w-full bg-blue-600 p-4 rounded-2xl font-bold shadow-lg">دخول 🚀</button>
+                            <button onClick={() => window.location.href = window.location.origin + window.location.pathname + '?room=room_' + Math.random().toString(36).substr(2, 5)} className="mt-4 text-xs text-gray-400 block w-full">إنشاء غرفة خاصة 🔒</button>
                         </div>
                     </div>
                 );
             }
 
             return (
-                <div className="flex flex-col h-[100dvh] w-full max-w-md mx-auto bg-white shadow-2xl overflow-hidden">
-                    {/* رأس واتساب */}
-                    <div className="bg-[#075e54] p-3 text-white flex justify-between items-center shadow-lg z-20">
+                <div className="flex flex-col h-[100dvh] w-full max-w-lg mx-auto overflow-hidden relative">
+                    {/* رأس الصفحة */}
+                    <div className="glass m-3 p-4 rounded-3xl flex justify-between items-center z-50">
                         <div className="flex items-center gap-3">
-                            <i className="fas fa-arrow-right text-lg"></i>
-                            <div className="w-10 h-10 bg-gray-300 rounded-full flex items-center justify-center text-gray-600">
-                                <i className="fas fa-user text-xl"></i>
+                            <div className="w-10 h-10 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center">
+                                <i className="fas fa-user text-sm"></i>
                             </div>
-                            <div className="text-right">
-                                <h1 className="font-bold text-sm leading-tight">{myName}</h1>
-                                <p className="text-[10px] text-green-200">متصل الآن</p>
+                            <div>
+                                <h1 className="font-bold text-sm">{myName}</h1>
+                                <p className="text-[9px] text-blue-400 uppercase tracking-widest">{roomId}</p>
                             </div>
                         </div>
-                        <div className="flex gap-5 text-lg opacity-90">
-                            <i className="fas fa-video"></i>
-                            <i className="fas fa-phone"></i>
-                            <i className="fas fa-ellipsis-v"></i>
+                        <div className="flex gap-4">
+                            <button onClick={()=>startCall(false)} className="hover:text-green-400"><i className="fas fa-phone-alt"></i></button>
+                            <button onClick={()=>startCall(true)} className="hover:text-blue-400"><i className="fas fa-video"></i></button>
+                            <button onClick={()=>{navigator.clipboard.writeText(myPeerId); alert("معرفك هو: " + myPeerId)}}><i className="fas fa-fingerprint"></i></button>
+                            <button onClick={()=>{navigator.clipboard.writeText(window.location.href); alert("تم نسخ رابط الغرفة!")}}><i className="fas fa-share-alt"></i></button>
                         </div>
                     </div>
 
-                    {/* منطقة الرسائل بالخلفية */}
-                    <div className="flex-1 overflow-y-auto p-3 space-y-2 chat-bg no-scrollbar">
+                    {/* منطقة الفيديو العائمة */}
+                    {(stream || remoteStream) && (
+                        <div className="absolute inset-0 z-40 bg-black/80 backdrop-blur-md flex flex-col items-center justify-center p-4">
+                            <div className="relative w-full max-w-sm h-[60vh] bg-gray-900 rounded-[30px] overflow-hidden shadow-2xl border-2 border-white/20">
+                                <video ref={remoteVideoRef} autoPlay playsInline className="w-full h-full object-cover" />
+                                <video ref={myVideoRef} autoPlay playsInline muted className="absolute top-4 right-4 w-28 h-40 rounded-2xl border-2 border-white/30 shadow-xl" />
+                            </div>
+                            <button onClick={endCall} className="mt-8 bg-red-500 w-16 h-16 rounded-full flex items-center justify-center text-2xl shadow-xl animate-bounce">
+                                <i className="fas fa-phone-slash"></i>
+                            </button>
+                        </div>
+                    )}
+
+                    {/* الرسائل */}
+                    <div className="flex-1 overflow-y-auto px-4 space-y-4 no-scrollbar pb-24">
                         {messages.map((m, i) => (
-                            <div key={i} className={`flex ${m.senderId === peerId ? "justify-end" : "justify-start"}`}>
-                                <div className={`max-w-[80%] p-2 px-3 rounded-lg shadow-md relative ${m.senderId === peerId ? "bg-[#dcf8c6] text-gray-800" : "bg-white text-gray-800"}`}>
-                                    <p className="text-[11px] font-bold text-blue-600 mb-0.5">{m.senderName}</p>
-                                    <p className="text-[15px] leading-snug pb-3">{m.text}</p>
-                                    <span className="text-[9px] text-gray-500 absolute left-2 bottom-1">{m.time} {m.senderId === peerId && <i className="fas fa-check-double text-blue-400 ml-1"></i>}</span>
+                            <div key={i} className={`flex ${m.senderId === myPeerId ? "justify-end" : "justify-start"}`}>
+                                <div className={`max-w-[80%] p-4 shadow-lg ${m.senderId === myPeerId ? "my-msg" : "other-msg"}`}>
+                                    <p className="text-[10px] font-bold mb-1 opacity-60">{m.senderName}</p>
+                                    <p className="text-sm leading-relaxed">{m.text}</p>
+                                    <span className="text-[8px] opacity-40 block mt-2 text-left">{m.time}</span>
                                 </div>
                             </div>
                         ))}
                         <div ref={messagesEndRef} />
                     </div>
 
-                    {/* صندوق إدخال واتساب */}
-                    <div className="p-2 bg-[#f0f0f0] flex gap-2 items-center pb-6">
-                        <div className="flex-1 bg-white rounded-full flex items-center px-4 py-1 shadow-sm">
-                            <i className="far fa-smile text-gray-500 text-xl cursor-pointer"></i>
-                            <input
-                                className="flex-1 p-2 bg-transparent outline-none text-sm mx-2"
-                                value={inputValue}
-                                onChange={(e) => setInputValue(e.target.value)}
-                                onKeyPress={(e) => e.key === 'Enter' && handleSend()}
-                                placeholder="رسالة"
-                            />
-                            <i className="fas fa-paperclip text-gray-500 text-lg mx-2 rotate-[-45deg]"></i>
-                            <i className="fas fa-camera text-gray-500 text-lg"></i>
+                    {/* صندوق الإدخال */}
+                    <div className="absolute bottom-6 left-4 right-4">
+                        <div className="glass p-2 rounded-[30px] flex gap-2 shadow-2xl">
+                            <input className="flex-1 p-4 bg-transparent outline-none text-sm" placeholder="اكتب شيئاً..." value={inputValue} onChange={(e)=>setInputValue(e.target.value)} onKeyPress={(e)=>e.key==='Enter' && handleSend()} />
+                            <button onClick={handleSend} className="bg-blue-600 w-14 h-14 rounded-full flex items-center justify-center shadow-lg active:scale-90 transition-all">
+                                <i className="fas fa-paper-plane"></i>
+                            </button>
                         </div>
-                        {/* الأيقونة التي طلبتها: تتحول من ميكروفون إلى إرسال */}
-                        <button onClick={handleSend} className="bg-[#128c7e] text-white w-12 h-12 rounded-full flex items-center justify-center shadow-lg active:scale-90 transition-all">
-                            {inputValue.trim() === "" ? <i className="fas fa-microphone text-xl"></i> : <i className="fas fa-paper-plane text-xl"></i>}
-                        </button>
                     </div>
                 </div>
             );
