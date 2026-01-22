@@ -3,22 +3,26 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>دردشة زيد العالمية - متصلة بالسحاب 🚀</title>
-    
+    <title>دردشة زيد العالمية - النسخة الاحترافية 🌍</title>
+
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
-    
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <style>body, html { overflow: hidden; height: 100%; font-family: sans-serif; }</style>
+
+    <style>
+        body, html { overflow: hidden; height: 100%; font-family: sans-serif; }
+        .message-container { height: calc(100vh - 180px); }
+    </style>
 </head>
 <body class="bg-gray-100">
     <div id="root"></div>
+
     <script type="text/babel">
-        // إعدادات الـ API التي استخرجتها يا زيد
+        // إعدادات الـ API الخاصة بك
         const firebaseConfig = {
             apiKey: "AIzaSyC9IyERsk-efzo3HVTLBL9xNVTms2LaGGM",
             authDomain: "zaid-chat-3f1e3.firebaseapp.com",
@@ -26,94 +30,115 @@
             storageBucket: "zaid-chat-3f1e3.firebasestorage.app",
             messagingSenderId: "238604767784",
             appId: "1:238604767784:web:4f213066c16862f2529b1d",
-            databaseURL: "https://zaid-chat-3f1e3-default-rtdb.firebaseio.com" // رابط السحاب الخاص بك
+            databaseURL: "https://zaid-chat-3f1e3-default-rtdb.firebaseio.com"
         };
 
-        // تشغيل المحرك
+        // بدء تشغيل Firebase
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
-       function App() {
-        const [isLoggedIn, setIsLoggedIn] = React.useState(false);
-        const [myName, setMyName] = React.useState(""); // اسمك الشخصي
-        const [messages, setMessages] = React.useState([]);
-        const [inputValue, setInputValue] = React.useState("");
-        const [peerId, setPeerId] = React.useState("");
+        function App() {
+            const [isLoggedIn, setIsLoggedIn] = React.useState(false);
+            const [myName, setMyName] = React.useState("");
+            const [messages, setMessages] = React.useState([]);
+            const [inputValue, setInputValue] = React.useState("");
+            const [peerId, setPeerId] = React.useState("");
 
-        React.useEffect(() => {
-            const messagesRef = firebase.database().ref('messages');
-            messagesRef.on('value', (snapshot) => {
-                const data = snapshot.val();
-                if (data) setMessages(Object.values(data));
-            });
+            React.useEffect(() => {
+                // الربط مع قاعدة البيانات لجلب الرسائل فوراً
+                const messagesRef = db.ref('messages');
+                messagesRef.on('value', (snapshot) => {
+                    const data = snapshot.val();
+                    if (data) {
+                        setMessages(Object.values(data));
+                    }
+                });
 
-            const peer = new Peer();
-            peer.on('open', (id) => setPeerId(id));
-        }, []);
+                // إنشاء معرف فريد للجهاز
+                const peer = new Peer();
+                peer.on('open', (id) => setPeerId(id));
+            }, []);
 
-        const handleLogin = () => {
-            if (myName.trim() !== "") setIsLoggedIn(true);
-        };
+            const handleLogin = () => {
+                if (myName.trim() !== "") setIsLoggedIn(true);
+            };
 
-        const handleSend = () => {
-            if (inputValue.trim() === "") return;
-            const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-            
-            // نرسل الرسالة ومعها "اسمك" ليعرف الطرف الآخر من أنت
-            firebase.database().ref('messages').push({
-                text: inputValue,
-                time: time,
-                senderName: myName, 
-                senderId: peerId
-            });
-            setInputValue("");
-        };
+            const handleSend = () => {
+                if (inputValue.trim() === "") return;
+                const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-        // 1. شاشة الدخول (تظهر إذا لم يسجل الدخول)
-        if (!isLoggedIn) {
+                // إرسال البيانات للسحاب
+                db.ref('messages').push({
+                    text: inputValue,
+                    time: time,
+                    senderName: myName,
+                    senderId: peerId
+                });
+                setInputValue("");
+            };
+
+            // 1. شاشة الدخول
+            if (!isLoggedIn) {
+                return (
+                    <div className="flex flex-col items-center justify-center h-screen bg-indigo-600 p-6">
+                        <div className="bg-white p-8 rounded-3xl shadow-2xl w-full max-w-sm text-center">
+                            <h2 className="text-2xl font-bold mb-6 text-gray-800">دردشة زيد 🌍</h2>
+                            <input
+                                className="w-full p-4 border-2 border-gray-100 rounded-xl mb-4 outline-none focus:border-indigo-500 transition-all text-center"
+                                placeholder="أدخل اسمك للدخول..."
+                                value={myName}
+                                onChange={(e) => setMyName(e.target.value)}
+                                onKeyPress={(e) => e.key === 'Enter' && handleLogin()}
+                            />
+                            <button onClick={handleLogin} className="w-full bg-indigo-600 text-white p-4 rounded-xl font-bold hover:bg-indigo-700 shadow-lg">
+                                دخول الآن 🚀
+                            </button>
+                        </div>
+                    </div>
+                );
+            }
+
+            // 2. شاشة الدردشة الرئيسية
             return (
-                <div className="flex flex-col items-center justify-center h-screen bg-indigo-600 p-6">
-                    <div className="bg-white p-8 rounded-3xl shadow-2xl w-full max-w-sm text-center">
-                        <h2 className="text-2xl font-bold mb-6 text-gray-800">مرحباً بك في دردشة زيد 🌍</h2>
-                        <input 
-                            className="w-full p-4 border-2 border-gray-100 rounded-xl mb-4 outline-none focus:border-indigo-500 transition-all"
-                            placeholder="أدخل اسمك هنا..."
-                            value={myName}
-                            onChange={(e) => setMyName(e.target.value)}
+                <div className="flex flex-col h-[100dvh] w-full max-w-md mx-auto bg-white border-x">
+                    {/* الرأس */}
+                    <div className="bg-indigo-600 p-4 text-white text-center shadow-md">
+                        <h1 className="font-bold text-lg">أهلاً {myName} 👋</h1>
+                        <p className="text-[10px] opacity-70">متصل بالسحاب</p>
+                    </div>
+
+                    {/* منطقة الرسائل */}
+                    <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-indigo-50 message-container">
+                        {messages.map((m, i) => (
+                            <div key={i} className={`flex ${m.senderId === peerId ? "justify-end" : "justify-start"}`}>
+                                <div className={`max-w-[85%] p-3 rounded-2xl shadow-sm ${m.senderId === peerId ? "bg-indigo-600 text-white rounded-br-none" : "bg-white text-gray-800 border rounded-bl-none"}`}>
+                                    <p className="text-[10px] font-bold mb-1 opacity-70">{m.senderName}</p>
+                                    <p className="text-[15px]">{m.text}</p>
+                                    <span className="text-[9px] opacity-50 block mt-1 text-left">{m.time}</span>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+
+                    {/* صندوق الإرسال */}
+                    <div className="p-4 bg-white border-t flex gap-2 pb-8">
+                        <input
+                            className="flex-1 p-3 bg-gray-100 rounded-full outline-none text-sm px-5"
+                            value={inputValue}
+                            onChange={(e) => setInputValue(e.target.value)}
+                            onKeyPress={(e) => e.key === 'Enter' && handleSend()}
+                            placeholder="اكتب رسالة..."
                         />
-                        <button 
-                            onClick={handleLogin}
-                            className="w-full bg-indigo-600 text-white p-4 rounded-xl font-bold hover:bg-indigo-700 transition-all shadow-lg"
-                        >
-                            دخول للدردشة 🚀
+                        <button onClick={handleSend} className="bg-indigo-600 text-white w-12 h-12 rounded-full shadow-lg flex items-center justify-center active:scale-90 transition-transform">
+                            🚀
                         </button>
                     </div>
                 </div>
             );
         }
 
-        // 2. شاشة الدردشة (تظهر بعد إدخال الاسم)
-        return (
-            <div className="flex flex-col h-[100dvh] w-full max-w-md mx-auto bg-white">
-                <div className="bg-indigo-600 p-4 text-white text-center shadow-md">
-                    <h1 className="font-bold">أهلاً {myName} 👋</h1>
-                </div>
-                {/* عرض الرسائل مع إظهار اسم المرسل m.senderName */}
-                <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-indigo-50">
-                    {messages.map((m, i) => (
-                        <div key={i} className={`flex ${m.senderId === peerId ? "justify-end" : "justify-start"}`}>
-                            <div className={`max-w-[85%] p-3 rounded-2xl shadow-sm ${m.senderId === peerId ? "bg-indigo-600 text-white" : "bg-white text-gray-800"}`}>
-                                <p className="text-[10px] font-bold mb-1 opacity-70">{m.senderName}</p>
-                                <p className="text-[15px]">{m.text}</p>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-                {/* صندوق الإدخال كما هو */}
-            </div>
-        );
-    }
-    // ...
-</script>
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
 </body>
 </html>
