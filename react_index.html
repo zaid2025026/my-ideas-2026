@@ -1,32 +1,32 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
-
 <head>
     <meta charset="UTF-8">
-    <title>تطبيق زيد العالمي 🌍</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>دردشة زيد العالمية 🌍</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <style>
+        /* منع التمرير الزائد في الجوال ليعطي شعور التطبيق الحقيقي */
+        body, html { overflow: hidden; height: 100%; }
+    </style>
 </head>
-
 <body class="bg-gray-100">
     <div id="root"></div>
     <script type="text/babel">
         function App() {
-            const [username, setUsername] = React.useState("زيد");
             const [messages, setMessages] = React.useState([]);
             const [inputValue, setInputValue] = React.useState("");
             const [peerId, setPeerId] = React.useState("");
             const [remoteId, setRemoteId] = React.useState("");
             const peerInstance = React.useRef(null);
 
-            // تشغيل محرك الاتصال فور فتح الصفحة
             React.useEffect(() => {
                 const peer = new Peer();
                 peer.on('open', (id) => setPeerId(id));
-
                 peer.on('connection', (conn) => {
                     conn.on('data', (data) => {
                         const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -37,75 +37,62 @@
             }, []);
 
             const handleSend = () => {
-                if (inputValue.trim() === "" || remoteId.trim() === "") {
-                    alert("تأكد من كتابة رسالة ووضع عنوان الصديق!");
-                    return;
-                }
-
-                // 1. إنشاء طلب الاتصال بالصديق
+                if (inputValue.trim() === "" || remoteId.trim() === "") return;
                 const conn = peerInstance.current.connect(remoteId);
-
-                // 2. الانتظار حتى تفتح القناة بنجاح ثم الإرسال
                 conn.on('open', () => {
-                    conn.send(inputValue); // الإرسال الآن بعد التأكد من الربط
-
+                    conn.send(inputValue);
                     const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                    setMessages(prev => [...prev, { text: inputValue, time: time, sender: "أنا" }]);
+                    setMessages([...messages, { text: inputValue, time: time, sender: "أنا" }]);
                     setInputValue("");
                 });
-
-                // 3. في حال كان العنوان خطأ أو الصديق غير موجود
-                conn.on('error', (err) => {
-                    alert("تعذر الاتصال بهذا العنوان، تأكد من صحته!");
-                });
             };
+
             return (
-                <div className="flex flex-col h-screen max-w-md mx-auto bg-white shadow-2xl border-x border-gray-200">
-                    {/* رأس التطبيق */}
-                    <div className="bg-blue-600 p-4 text-white text-center shadow-md">
-                        <h1 className="font-bold text-lg">تطبيق {username} العالمي 🌍</h1>
-                        <div className="text-[10px] mt-2 bg-blue-700 p-1 rounded">
-                            عنوانك الخاص (ID): <span className="font-mono select-all bg-white text-blue-800 px-1 rounded">{peerId || "جاري التحميل..."}</span>
+                // استخدام h-[100dvh] لضمان ملء الشاشة حتى مع وجود شريط المتصفح في الجوال
+                <div className="flex flex-col h-[100dvh] w-full max-w-md mx-auto bg-white shadow-none sm:shadow-2xl">
+                    
+                    {/* رأس التطبيق - تصميم أنيق للجوال */}
+                    <div className="bg-blue-600 p-4 text-white text-center shadow-md flex-none">
+                        <h1 className="font-bold text-lg">دردشة زيد 🌍</h1>
+                        <div className="text-[10px] mt-1 bg-blue-700 p-1 rounded-full px-3">
+                             ID الخاص بك: <span className="font-mono font-bold">{peerId || "..."}</span>
                         </div>
                     </div>
 
-                    {/* منطقة الاتصال بالصديق */}
-                    <div className="p-2 bg-gray-50 border-b">
-                        <input
-                            className="w-full p-2 text-xs border rounded outline-none focus:border-blue-500"
-                            placeholder="أدخل عنوان الصديق هنا لبدء الدردشة..."
+                    {/* مدخل ID الصديق */}
+                    <div className="p-3 bg-gray-50 border-b flex-none">
+                        <input 
+                            className="w-full p-3 text-sm border rounded-xl outline-none focus:ring-2 focus:ring-blue-500" 
+                            placeholder="ضع ID الصديق هنا..."
                             value={remoteId}
                             onChange={(e) => setRemoteId(e.target.value)}
                         />
                     </div>
 
-                    {/* عرض الرسائل */}
-                    <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-slate-50">
-                        {messages.length === 0 && (
-                            <p className="text-center text-gray-400 text-xs mt-10 italic">لا توجد رسائل بعد.. ابدأ المحادثة!</p>
-                        )}
+                    {/* منطقة الرسائل - مرنة لتناسب طول الشاشة */}
+                    <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50">
                         {messages.map((m, i) => (
                             <div key={i} className={`flex ${m.sender === "أنا" ? "justify-end" : "justify-start"}`}>
-                                <div className={`max-w-[80%] p-2 rounded-2xl shadow-sm ${m.sender === "أنا" ? "bg-blue-600 text-white rounded-br-none" : "bg-white text-gray-800 border rounded-bl-none"}`}>
-                                    <p className="text-sm">{m.text}</p>
-                                    <span className="text-[9px] opacity-70 block text-left mt-1 font-mono">{m.time}</span>
+                                <div className={`max-w-[85%] p-3 rounded-2xl shadow-sm ${m.sender === "أنا" ? "bg-blue-600 text-white rounded-br-none" : "bg-white text-gray-800 border rounded-bl-none"}`}>
+                                    <p className="text-[15px]">{m.text}</p>
+                                    <span className="text-[10px] opacity-70 block mt-1">{m.time}</span>
                                 </div>
                             </div>
                         ))}
                     </div>
 
-                    {/* صندوق الإدخال */}
-                    <div className="p-3 bg-white border-t flex gap-2 items-center">
-                        <input
-                            className="flex-1 p-2 bg-gray-100 rounded-full outline-none text-sm px-4 focus:bg-gray-200 transition-all"
+                    {/* صندوق الكتابة - أزرار كبيرة للمس */}
+                    <div className="p-4 bg-white border-t flex gap-2 items-center pb-6 sm:pb-4 flex-none">
+                        <input 
+                            className="flex-1 p-3 bg-gray-100 rounded-full outline-none text-md px-5" 
                             value={inputValue}
                             onChange={(e) => setInputValue(e.target.value)}
                             onKeyPress={(e) => e.key === 'Enter' && handleSend()}
-                            placeholder="اكتب رسالتك..."
+                            placeholder="اكتب رسالة..."
                         />
-                        <button
+                        <button 
                             onClick={handleSend}
-                            className="bg-blue-600 hover:bg-blue-700 text-white w-10 h-10 rounded-full flex items-center justify-center transition-transform active:scale-90"
+                            className="bg-blue-600 text-white w-12 h-12 rounded-full flex items-center justify-center shadow-lg active:scale-90 transition-transform"
                         >
                             🚀
                         </button>
@@ -113,10 +100,7 @@
                 </div>
             );
         }
-
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<App />);
+        ReactDOM.createRoot(document.getElementById('root')).render(<App />);
     </script>
 </body>
-
 </html>
