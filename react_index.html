@@ -3,20 +3,36 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>دردشة زيد العالمية 🌍</title>
+    <title>دردشة زيد العالمية - متصلة بالسحاب 🚀</title>
+    
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
+    
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <style>
-        /* منع التمرير الزائد في الجوال ليعطي شعور التطبيق الحقيقي */
-        body, html { overflow: hidden; height: 100%; }
-    </style>
+    <style>body, html { overflow: hidden; height: 100%; font-family: sans-serif; }</style>
 </head>
 <body class="bg-gray-100">
     <div id="root"></div>
     <script type="text/babel">
+        // إعدادات الـ API التي استخرجتها يا زيد
+        const firebaseConfig = {
+            apiKey: "AIzaSyC9IyERsk-efzo3HVTLBL9xNVTms2LaGGM",
+            authDomain: "zaid-chat-3f1e3.firebaseapp.com",
+            projectId: "zaid-chat-3f1e3",
+            storageBucket: "zaid-chat-3f1e3.firebasestorage.app",
+            messagingSenderId: "238604767784",
+            appId: "1:238604767784:web:4f213066c16862f2529b1d",
+            databaseURL: "https://zaid-chat-3f1e3-default-rtdb.firebaseio.com" // رابط السحاب الخاص بك
+        };
+
+        // تشغيل المحرك
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
         function App() {
             const [messages, setMessages] = React.useState([]);
             const [inputValue, setInputValue] = React.useState("");
@@ -25,77 +41,78 @@
             const peerInstance = React.useRef(null);
 
             React.useEffect(() => {
+                // استماع للرسائل من السحاب فوراً
+                const messagesRef = db.ref('messages');
+                messagesRef.on('value', (snapshot) => {
+                    const data = snapshot.val();
+                    if (data) {
+                        // تحويل الكائن إلى مصفوفة لعرضها
+                        const loadedMessages = Object.values(data);
+                        setMessages(loadedMessages);
+                    }
+                });
+
                 const peer = new Peer();
                 peer.on('open', (id) => setPeerId(id));
-                peer.on('connection', (conn) => {
-                    conn.on('data', (data) => {
-                        const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                        setMessages(prev => [...prev, { text: data, time: time, sender: "صديقي" }]);
-                    });
-                });
                 peerInstance.current = peer;
             }, []);
 
             const handleSend = () => {
-                if (inputValue.trim() === "" || remoteId.trim() === "") return;
-                const conn = peerInstance.current.connect(remoteId);
-                conn.on('open', () => {
-                    conn.send(inputValue);
-                    const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                    setMessages([...messages, { text: inputValue, time: time, sender: "أنا" }]);
-                    setInputValue("");
-                });
+                if (inputValue.trim() === "") return;
+
+                const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                const newMessage = {
+                    text: inputValue,
+                    time: time,
+                    sender: peerId || "مجهول",
+                    to: remoteId || "الكل"
+                };
+
+                // حفظ في السحاب عبر الـ API
+                db.ref('messages').push(newMessage);
+                setInputValue("");
             };
 
             return (
-                // استخدام h-[100dvh] لضمان ملء الشاشة حتى مع وجود شريط المتصفح في الجوال
                 <div className="flex flex-col h-[100dvh] w-full max-w-md mx-auto bg-white shadow-none sm:shadow-2xl">
-                    
-                    {/* رأس التطبيق - تصميم أنيق للجوال */}
                     <div className="bg-blue-600 p-4 text-white text-center shadow-md flex-none">
-                        <h1 className="font-bold text-lg">دردشة زيد 🌍</h1>
-                        <div className="text-[10px] mt-1 bg-blue-700 p-1 rounded-full px-3">
-                             ID الخاص بك: <span className="font-mono font-bold">{peerId || "..."}</span>
-                        </div>
+                        <h1 className="font-bold text-lg text-white">دردشة زيد العالمية 🌍</h1>
+                        <p className="text-[10px] opacity-80 mt-1">المعرف الخاص بك: {peerId}</p>
                     </div>
 
-                    {/* مدخل ID الصديق */}
-                    <div className="p-3 bg-gray-50 border-b flex-none">
+                    <div className="p-2 bg-gray-50 border-b flex-none">
                         <input 
-                            className="w-full p-3 text-sm border rounded-xl outline-none focus:ring-2 focus:ring-blue-500" 
-                            placeholder="ضع ID الصديق هنا..."
+                            className="w-full p-2 text-xs border rounded-lg outline-none focus:border-blue-500" 
+                            placeholder="اختياري: معرف الصديق (للفلترة)..."
                             value={remoteId}
                             onChange={(e) => setRemoteId(e.target.value)}
                         />
                     </div>
 
-                    {/* منطقة الرسائل - مرنة لتناسب طول الشاشة */}
                     <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50">
+                        {messages.length === 0 && (
+                            <p className="text-center text-gray-400 text-xs mt-10 italic">لا توجد رسائل في السحاب بعد..</p>
+                        )}
                         {messages.map((m, i) => (
-                            <div key={i} className={`flex ${m.sender === "أنا" ? "justify-end" : "justify-start"}`}>
-                                <div className={`max-w-[85%] p-3 rounded-2xl shadow-sm ${m.sender === "أنا" ? "bg-blue-600 text-white rounded-br-none" : "bg-white text-gray-800 border rounded-bl-none"}`}>
+                            <div key={i} className={`flex ${m.sender === peerId ? "justify-end" : "justify-start"}`}>
+                                <div className={`max-w-[85%] p-3 rounded-2xl shadow-sm ${m.sender === peerId ? "bg-blue-600 text-white rounded-br-none" : "bg-white text-gray-800 border rounded-bl-none"}`}>
+                                    <p className="text-sm font-bold text-[10px] mb-1 opacity-70">{m.sender === peerId ? "أنا" : "صديق"}</p>
                                     <p className="text-[15px]">{m.text}</p>
-                                    <span className="text-[10px] opacity-70 block mt-1">{m.time}</span>
+                                    <span className="text-[9px] opacity-60 block mt-1">{m.time}</span>
                                 </div>
                             </div>
                         ))}
                     </div>
 
-                    {/* صندوق الكتابة - أزرار كبيرة للمس */}
-                    <div className="p-4 bg-white border-t flex gap-2 items-center pb-6 sm:pb-4 flex-none">
+                    <div className="p-4 bg-white border-t flex gap-2 items-center pb-8 flex-none">
                         <input 
-                            className="flex-1 p-3 bg-gray-100 rounded-full outline-none text-md px-5" 
+                            className="flex-1 p-3 bg-gray-100 rounded-full outline-none text-sm px-5" 
                             value={inputValue}
                             onChange={(e) => setInputValue(e.target.value)}
                             onKeyPress={(e) => e.key === 'Enter' && handleSend()}
-                            placeholder="اكتب رسالة..."
+                            placeholder="اكتب رسالة للسحاب..."
                         />
-                        <button 
-                            onClick={handleSend}
-                            className="bg-blue-600 text-white w-12 h-12 rounded-full flex items-center justify-center shadow-lg active:scale-90 transition-transform"
-                        >
-                            🚀
-                        </button>
+                        <button onClick={handleSend} className="bg-blue-600 text-white w-12 h-12 rounded-full shadow-lg active:scale-90 transition-transform flex items-center justify-center">🚀</button>
                     </div>
                 </div>
             );
