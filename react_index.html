@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -14,12 +15,25 @@
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
     <style>
-        body, html { overflow: hidden; height: 100%; font-family: sans-serif; }
+        body,
+        html {
+            overflow: hidden;
+            height: 100%;
+            font-family: sans-serif;
+        }
+
         /* إخفاء شريط السحب لجعل التصميم أنيقاً */
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
     </style>
 </head>
+
 <body class="bg-gray-100">
     <div id="root"></div>
 
@@ -38,43 +52,37 @@
         const db = firebase.database();
 
         function App() {
+            // 1. استخراج "معرف الغرفة" من رابط الموقع تلقائياً
+            const urlParams = new URLSearchParams(window.location.search);
+            const roomId = urlParams.get('room') || 'general'; // إذا لم يوجد رقم، يدخل العام
+
             const [isLoggedIn, setIsLoggedIn] = React.useState(false);
             const [myName, setMyName] = React.useState("");
             const [messages, setMessages] = React.useState([]);
             const [inputValue, setInputValue] = React.useState("");
             const [peerId, setPeerId] = React.useState("");
-            
-            // 1. إنشاء المرجع للنزول التلقائي
             const messagesEndRef = React.useRef(null);
 
-            const scrollToBottom = () => {
-                messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-            };
-
             React.useEffect(() => {
-                const messagesRef = db.ref('messages');
+                // 2. تغيير مسار السحاب ليكون خاصاً بهذه الغرفة فقط
+                const messagesRef = firebase.database().ref('chats/' + roomId);
+
                 messagesRef.on('value', (snapshot) => {
                     const data = snapshot.val();
                     if (data) setMessages(Object.values(data));
+                    else setMessages([]); // إذا الغرفة جديدة وفارغة
                 });
 
                 const peer = new Peer();
                 peer.on('open', (id) => setPeerId(id));
-            }, []);
-
-            // 2. تفعيل النزول التلقائي عند تغير الرسائل
-            React.useEffect(() => {
-                scrollToBottom();
-            }, [messages]);
-
-            const handleLogin = () => {
-                if (myName.trim() !== "") setIsLoggedIn(true);
-            };
+            }, [roomId]); // التحديث لو تغيرت الغرفة
 
             const handleSend = () => {
                 if (inputValue.trim() === "") return;
                 const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                db.ref('messages').push({
+
+                // 3. الحفظ في مسار الغرفة الخاصة
+                firebase.database().ref('chats/' + roomId).push({
                     text: inputValue,
                     time: time,
                     senderName: myName,
@@ -142,4 +150,5 @@
         root.render(<App />);
     </script>
 </body>
+
 </html>
