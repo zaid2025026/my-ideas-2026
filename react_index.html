@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Zaid Super Chat | الإصدار الاحترافي ⚡</title>
+    <title>Zaid Ultra Chat | الخصوصية الكاملة 🔒</title>
 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
@@ -15,12 +15,14 @@
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
     <style>
-        body, html { height: 100%; overflow: hidden; font-family: sans-serif; background: #0f172a; }
-        .glass { background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(15px); border: 1px solid rgba(255, 255, 255, 0.1); }
-        .my-msg { background: linear-gradient(135deg, #3b82f6, #8b5cf6); border-radius: 20px 20px 4px 20px; }
-        .other-msg { background: rgba(255, 255, 255, 0.1); border-radius: 20px 20px 20px 4px; }
+        body, html { height: 100%; overflow: hidden; font-family: 'Segoe UI', sans-serif; background: #0f172a; }
+        .glass { background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.1); }
+        .my-msg { background: linear-gradient(135deg, #2563eb, #7c3aed); border-radius: 20px 20px 4px 20px; }
+        .other-msg { background: rgba(255, 255, 255, 0.07); border-radius: 20px 20px 20px 4px; border: 1px solid rgba(255, 255, 255, 0.05); }
         .no-scrollbar::-webkit-scrollbar { display: none; }
-        video { object-fit: cover; transform: scaleX(-1); }
+        video { object-fit: cover; transform: scaleX(-1); border-radius: 20px; }
+        .animate-pop { animation: pop 0.3s ease-out; }
+        @keyframes pop { from { transform: scale(0.8); opacity: 0; } to { transform: scale(1); opacity: 1; } }
     </style>
 </head>
 <body class="text-white">
@@ -42,7 +44,7 @@
 
         function App() {
             const urlParams = new URLSearchParams(window.location.search);
-            const roomId = urlParams.get('room') || 'general';
+            const roomId = urlParams.get('room') || 'general'; // نظام الغرف الخاصة
 
             const [isLoggedIn, setIsLoggedIn] = React.useState(false);
             const [myName, setMyName] = React.useState("");
@@ -53,16 +55,14 @@
             const [remoteStream, setRemoteStream] = React.useState(null);
             
             const peerInstance = React.useRef(null);
-            const myVideoRef = React.useRef(null);
-            const remoteVideoRef = React.useRef(null);
             const messagesEndRef = React.useRef(null);
 
             React.useEffect(() => {
                 const peer = new Peer();
-                peer.on('open', (id) => setMyPeerId(id));
+                peer.on('open', (id) => setMyPeerId(id)); // معرف الاتصال
 
                 peer.on('call', (call) => {
-                    if(confirm("مكالمة واردة.. هل تريد الرد؟")) {
+                    if(confirm("مكالمة واردة.. هل تود الرد؟")) {
                         navigator.mediaDevices.getUserMedia({ video: true, audio: true }).then((s) => {
                             setStream(s);
                             call.answer(s);
@@ -72,9 +72,11 @@
                 });
 
                 peerInstance.current = peer;
+                // جلب الرسائل من مسار الغرفة الخاصة فقط لضمان الخصوصية
                 db.ref('chats/' + roomId).on('value', (s) => {
                     const data = s.val();
                     if (data) setMessages(Object.values(data));
+                    else setMessages([]);
                 });
             }, [roomId]);
 
@@ -83,10 +85,11 @@
             }, [messages]);
 
             const handleSend = (text, img = null) => {
+                if (!text && !img) return;
                 const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
                 db.ref('chats/' + roomId).push({
                     text: text || null,
-                    image: img || null,
+                    image: img || null, // دعم إرسال الصور
                     time,
                     senderName: myName,
                     senderId: myPeerId
@@ -103,74 +106,97 @@
                 }
             };
 
+            const createPrivateRoom = () => {
+                const randomId = "zaid_" + Math.random().toString(36).substr(2, 7);
+                window.location.href = window.location.origin + window.location.pathname + '?room=' + randomId;
+            };
+
             const startCall = async (v) => {
-                const fId = prompt("أدخل معرف الصديق:");
+                const fId = prompt("أدخل معرف (ID) الصديق للاتصال به:");
                 if (!fId) return;
-                const s = await navigator.mediaDevices.getUserMedia({ video: v, audio: true });
-                setStream(s);
-                const call = peerInstance.current.call(fId, s);
-                call.on('stream', (rS) => setRemoteStream(rS));
+                try {
+                    const s = await navigator.mediaDevices.getUserMedia({ video: v, audio: true });
+                    setStream(s);
+                    const call = peerInstance.current.call(fId, s);
+                    call.on('stream', (rS) => setRemoteStream(rS));
+                } catch(e) { alert("تأكد من إعطاء صلاحية الكاميرا!"); }
             };
 
             if (!isLoggedIn) return (
-                <div className="flex flex-col items-center justify-center h-screen p-6">
-                    <div className="glass p-10 rounded-[40px] w-full max-w-sm text-center">
-                        <h2 className="text-2xl font-bold mb-6">Zaid Chat</h2>
-                        <input className="w-full p-4 bg-white/10 rounded-2xl mb-4 text-center outline-none" placeholder="اسمك" value={myName} onChange={(e)=>setMyName(e.target.value)} />
-                        <button onClick={()=>myName && setIsLoggedIn(true)} className="w-full bg-blue-600 p-4 rounded-2xl font-bold">دخول 🚀</button>
+                <div className="flex items-center justify-center h-screen p-6 bg-[#020617]">
+                    <div className="glass p-10 rounded-[40px] w-full max-w-sm text-center animate-pop">
+                        <div className="w-20 h-20 bg-gradient-to-tr from-blue-600 to-purple-600 rounded-3xl mx-auto mb-6 flex items-center justify-center shadow-2xl">
+                            <i className="fas fa-shield-alt text-3xl"></i>
+                        </div>
+                        <h2 className="text-2xl font-black mb-2">دردشة زيد الآمنة</h2>
+                        <p className="text-[10px] text-gray-500 mb-8 tracking-[0.2em] uppercase">Private & Secure</p>
+                        <input className="w-full p-4 bg-white/5 rounded-2xl mb-4 text-center outline-none border border-white/10 focus:border-blue-500 transition-all" placeholder="اكتب اسمك المستعار" value={myName} onChange={(e)=>setMyName(e.target.value)} />
+                        <button onClick={()=>myName && setIsLoggedIn(true)} className="w-full bg-blue-600 p-4 rounded-2xl font-bold shadow-lg hover:bg-blue-700 transition-all">دخول 🚀</button>
+                        <button onClick={createPrivateRoom} className="mt-6 text-xs text-blue-400 font-bold hover:underline block w-full text-center">
+                            <i className="fas fa-plus-circle ml-1"></i> إنشاء غرفة خاصة جديدة 🔒
+                        </button>
                     </div>
                 </div>
             );
 
             return (
-                <div className="flex flex-col h-[100dvh] w-full max-w-lg mx-auto overflow-hidden relative">
-                    {/* رأس الصفحة الفخم */}
+                <div className="flex flex-col h-[100dvh] w-full max-w-lg mx-auto overflow-hidden relative bg-[#020617]">
+                    {/* رأس الصفحة المودرن */}
                     <div className="glass m-3 p-4 rounded-3xl flex justify-between items-center z-50">
-                        <div className="flex items-center gap-3 text-right">
-                            <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center"><i className="fas fa-user text-sm"></i></div>
-                            <div><h1 className="font-bold text-sm">{myName}</h1><p className="text-[9px] text-blue-400 uppercase tracking-widest">{roomId}</p></div>
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center shadow-lg"><i className="fas fa-user-shield text-xs"></i></div>
+                            <div>
+                                <h1 className="font-bold text-sm tracking-tight">{myName}</h1>
+                                <p className="text-[8px] text-green-400 font-bold uppercase tracking-widest">{roomId === 'general' ? 'العامة' : 'غرفة خاصة'}</p>
+                            </div>
                         </div>
-                        <div className="flex gap-4 items-center">
-                            <button onClick={()=>startCall(false)} className="hover:text-green-400"><i className="fas fa-phone"></i></button>
-                            <button onClick={()=>startCall(true)} className="hover:text-blue-400"><i className="fas fa-video"></i></button>
-                            <button onClick={()=>alert("معرفك: " + myPeerId)}><i className="fas fa-fingerprint"></i></button>
-                            <button onClick={()=>navigator.clipboard.writeText(window.location.href)}><i className="fas fa-share-alt"></i></button>
+                        <div className="flex gap-4 items-center text-gray-400">
+                            <button onClick={()=>startCall(false)} className="hover:text-green-400 transition-colors"><i className="fas fa-phone-alt"></i></button>
+                            <button onClick={()=>startCall(true)} className="hover:text-blue-400 transition-colors"><i className="fas fa-video"></i></button>
+                            <button onClick={()=>alert("معرفك الخاص للاتصال: " + myPeerId)} title="هويتك"><i className="fas fa-id-card"></i></button>
+                            <button onClick={()=>{navigator.clipboard.writeText(window.location.href); alert("تم نسخ رابط الغرفة الخاص!")}} title="مشاركة الرابط"><i className="fas fa-share-nodes text-blue-500"></i></button>
                         </div>
                     </div>
 
-                    {/* نافذة الاتصال (تظهر فوق الدردشة) */}
+                    {/* نافذة الاتصال الفيديو */}
                     {(stream || remoteStream) && (
-                        <div className="absolute inset-0 z-40 bg-black/90 flex flex-col items-center justify-center p-4">
-                            <div className="relative w-full max-w-sm aspect-[3/4] bg-gray-900 rounded-[30px] overflow-hidden">
+                        <div className="absolute inset-0 z-[60] bg-black flex flex-col items-center justify-center p-4 animate-pop">
+                            <div className="relative w-full max-w-sm aspect-[9/16] bg-gray-900 rounded-[40px] overflow-hidden shadow-2xl border border-white/10">
                                 {remoteStream && <video ref={(el) => el && (el.srcObject = remoteStream)} autoPlay className="w-full h-full object-cover" />}
-                                {stream && <video ref={(el) => el && (el.srcObject = stream)} autoPlay muted className="absolute top-4 right-4 w-28 h-40 rounded-2xl border-2 border-white/20" />}
+                                {stream && <video ref={(el) => el && (el.srcObject = stream)} autoPlay muted className="absolute bottom-6 right-6 w-32 h-48 rounded-3xl border-2 border-white/20 shadow-2xl z-10" />}
+                                <div className="absolute bottom-10 left-0 right-0 flex justify-center z-20">
+                                    <button onClick={()=> {stream?.getTracks().forEach(t=>t.stop()); setStream(null); setRemoteStream(null);}} className="bg-red-500 w-16 h-16 rounded-full flex items-center justify-center shadow-2xl ring-4 ring-red-500/20"><i className="fas fa-phone-slash text-xl"></i></button>
+                                </div>
                             </div>
-                            <button onClick={()=> {stream?.getTracks().forEach(t=>t.stop()); setStream(null); setRemoteStream(null);}} className="mt-6 bg-red-500 w-16 h-16 rounded-full flex items-center justify-center shadow-xl"><i className="fas fa-phone-slash text-xl"></i></button>
                         </div>
                     )}
 
-                    {/* منطقة الرسائل (تعرض الصور والنصوص) */}
-                    <div className="flex-1 overflow-y-auto px-4 space-y-4 no-scrollbar pb-24">
+                    {/* منطقة الرسائل المحمية */}
+                    <div className="flex-1 overflow-y-auto px-4 space-y-6 no-scrollbar pb-32 pt-2">
+                        {messages.length === 0 && <div className="text-center text-gray-600 text-[10px] mt-20 tracking-widest uppercase">لا توجد رسائل في هذه الغرفة الخاصة</div>}
                         {messages.map((m, i) => (
-                            <div key={i} className={`flex ${m.senderId === myPeerId ? "justify-end" : "justify-start"}`}>
-                                <div className={`max-w-[80%] p-3 shadow-lg ${m.senderId === myPeerId ? "my-msg" : "other-msg"}`}>
-                                    <p className="text-[10px] font-bold mb-1 opacity-60 text-right">{m.senderName}</p>
-                                    {m.text && <p className="text-sm">{m.text}</p>}
-                                    {m.image && <img src={m.image} className="rounded-lg max-w-full h-auto mt-1 border border-white/10" alt="صورة" />}
-                                    <span className="text-[8px] opacity-40 block mt-2">{m.time}</span>
+                            <div key={i} className={`flex flex-col ${m.senderId === myPeerId ? "items-end" : "items-start"} animate-pop`}>
+                                <span className="text-[9px] font-bold text-gray-500 mb-1 px-2">{m.senderName}</span>
+                                <div className={`max-w-[85%] p-4 shadow-xl ${m.senderId === myPeerId ? "my-msg" : "other-msg"}`}>
+                                    {m.text && <p className="text-[14px] leading-relaxed">{m.text}</p>}
+                                    {m.image && <img src={m.image} className="rounded-xl max-w-full h-auto mt-1 border border-white/5 shadow-inner" alt="صورة" />}
+                                    <div className="flex items-center justify-end gap-1 mt-2">
+                                        <span className="text-[8px] opacity-40">{m.time}</span>
+                                        {m.senderId === myPeerId && <i className="fas fa-check-double text-[8px] text-blue-300"></i>}
+                                    </div>
                                 </div>
                             </div>
                         ))}
                         <div ref={messagesEndRef} />
                     </div>
 
-                    {/* صندوق الإدخال مع زر الصور */}
-                    <div className="absolute bottom-6 left-4 right-4">
-                        <div className="glass p-2 rounded-[30px] flex gap-2 items-center">
+                    {/* صندوق الإدخال الذكي */}
+                    <div className="absolute bottom-6 left-4 right-4 z-50">
+                        <div className="glass p-2 rounded-[30px] flex gap-2 items-center shadow-2xl ring-1 ring-white/10">
                             <input type="file" id="file" hidden onChange={handleImage} accept="image/*" />
-                            <button onClick={()=>document.getElementById('file').click()} className="w-12 h-12 flex items-center justify-center text-gray-400 hover:text-white"><i className="fas fa-paperclip text-lg"></i></button>
-                            <input className="flex-1 bg-transparent p-2 outline-none text-sm" placeholder="رسالة..." value={inputValue} onChange={(e)=>setInputValue(e.target.value)} onKeyPress={(e)=>e.key==='Enter' && handleSend(inputValue)} />
-                            <button onClick={()=>handleSend(inputValue)} className="bg-blue-600 w-12 h-12 rounded-full flex items-center justify-center shadow-lg active:scale-90 transition-all"><i className="fas fa-paper-plane"></i></button>
+                            <button onClick={()=>document.getElementById('file').click()} className="w-12 h-12 flex items-center justify-center text-gray-500 hover:text-blue-400 transition-colors"><i className="fas fa-paperclip text-lg"></i></button>
+                            <input className="flex-1 bg-transparent p-2 outline-none text-sm text-white placeholder-gray-600" placeholder="اكتب رسالة خاصة..." value={inputValue} onChange={(e)=>setInputValue(e.target.value)} onKeyPress={(e)=>e.key==='Enter' && handleSend(inputValue)} />
+                            <button onClick={()=>handleSend(inputValue)} className="bg-blue-600 w-12 h-12 rounded-full flex items-center justify-center shadow-lg active:scale-90 transition-all hover:bg-blue-500"><i className="fas fa-paper-plane text-sm"></i></button>
                         </div>
                     </div>
                 </div>
