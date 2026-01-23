@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Zaid Master Pro | المحادثة الذكية 👑</title>
+    <title>Zaid Elite | المحادثة المشخصة 🖼️</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
@@ -13,13 +13,15 @@
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <style>
-        body, html { height: 100%; overflow: hidden; font-family: sans-serif; background: #020617; position: fixed; width: 100%; }
-        .glass { background: rgba(30, 41, 59, 0.95); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.2); }
+        body, html { height: 100%; overflow: hidden; font-family: sans-serif; background: #020617; position: fixed; width: 100%; color: white; }
+        .glass { background: rgba(30, 41, 59, 0.95); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.15); }
         .my-msg { background: #2563eb; color: white; border-radius: 18px 18px 4px 18px; }
         .other-msg { background: #f1f5f9; color: #0f172a; border-radius: 18px 18px 18px 4px; }
-        .input-container { padding-bottom: env(safe-area-inset-bottom, 20px); background: linear-gradient(to top, #020617 80%, transparent); }
+        .input-area { padding-bottom: env(safe-area-inset-bottom, 24px); background: #020617; border-top: 1px solid rgba(255,255,255,0.1); }
+        .send-btn { width: 56px; height: 56px; background: #2563eb; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 15px rgba(37, 99, 235, 0.4); flex-shrink: 0; }
+        .action-btn { width: 38px; height: 38px; border-radius: 10px; background: rgba(255,255,255,0.05); display: flex; align-items: center; justify-content: center; transition: 0.2s; }
+        .avatar-img { width: 42px; height: 42px; border-radius: 50%; object-fit: cover; border: 2px solid #3b82f6; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
-        video { width: 100%; border-radius: 15px; background: #000; border: 2px solid #3b82f6; }
     </style>
 </head>
 <body>
@@ -36,126 +38,128 @@
 
         function App() {
             const urlParams = new URLSearchParams(window.location.search);
-            const roomId = urlParams.get('room') || 'عامة';
+            const [roomId] = React.useState(urlParams.get('room') || 'عامة');
             const [isLoggedIn, setIsLoggedIn] = React.useState(false);
             const [myName, setMyName] = React.useState("");
             const [roomPass, setRoomPass] = React.useState("");
+            const [roomAvatar, setRoomAvatar] = React.useState(null);
             const [messages, setMessages] = React.useState([]);
             const [inputValue, setInputValue] = React.useState("");
             const [myPeerId, setMyPeerId] = React.useState("");
-            const [stream, setStream] = React.useState(null);
-            const [remoteStream, setRemoteStream] = React.useState(null);
+            
             const peerInstance = React.useRef(null);
             const messagesEndRef = React.useRef(null);
 
             React.useEffect(() => {
                 const peer = new Peer();
                 peer.on('open', id => setMyPeerId(id));
-                peer.on('call', call => {
-                    if(confirm("مكالمة فيديو واردة.. هل تقبل؟")) {
-                        navigator.mediaDevices.getUserMedia({video:true, audio:true}).then(s => {
-                            setStream(s); call.answer(s);
-                            call.on('stream', rS => setRemoteStream(rS));
-                        });
-                    }
-                });
                 peerInstance.current = peer;
             }, []);
 
             const checkAndLogin = async () => {
                 if (!myName) return alert("ادخل اسمك");
-                if (roomId !== 'عامة') {
-                    const snap = await db.ref('roomSettings/'+roomId).once('value');
-                    const config = snap.val();
-                    if (config && config.password && roomPass !== config.password) return alert("كلمة سر خاطئة");
-                    if (!config) await db.ref('roomSettings/'+roomId).set({password: roomPass});
+                const snap = await db.ref('roomSettings/'+roomId).once('value');
+                const config = snap.val();
+                if (config) {
+                    if (config.password && roomPass !== config.password) return alert("كلمة السر خاطئة");
+                    if (config.avatar) setRoomAvatar(config.avatar);
+                } else if (roomId !== 'عامة') {
+                    await db.ref('roomSettings/'+roomId).set({password: roomPass});
                 }
                 setIsLoggedIn(true);
                 db.ref('chats/'+roomId).on('value', s => setMessages(s.val() ? Object.values(s.val()) : []));
+                db.ref('roomSettings/'+roomId+'/avatar').on('value', s => setRoomAvatar(s.val()));
             };
 
-            const handleSend = (text, img = null) => {
-                const time = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
-                db.ref('chats/'+roomId).push({text, image:img, time, senderName:myName, senderId:myPeerId});
-                setInputValue("");
-            };
-
-            // خوارزمية الضغط الذكية
-            const processImage = (file) => {
+            const changeRoomAvatar = (e) => {
+                const file = e.target.files[0];
                 const reader = new FileReader();
-                reader.onload = (e) => {
+                reader.onload = (ev) => {
                     const img = new Image();
                     img.onload = () => {
                         const canvas = document.createElement('canvas');
-                        const ctx = canvas.getContext('2d');
-                        const scale = Math.min(800 / img.width, 1);
-                        canvas.width = img.width * scale; canvas.height = img.height * scale;
-                        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-                        handleSend(null, canvas.toDataURL('image/jpeg', 0.6)); // ضغط 60% لسرعة فائقة
+                        canvas.width = 200; canvas.height = 200;
+                        canvas.getContext('2d').drawImage(img, 0, 0, 200, 200);
+                        const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+                        db.ref('roomSettings/'+roomId).update({avatar: dataUrl});
                     };
-                    img.src = e.target.result;
+                    img.src = ev.target.result;
                 };
                 reader.readAsDataURL(file);
+            };
+
+            const handleSend = (text, img = null) => {
+                if(!text && !img) return;
+                const time = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+                db.ref('chats/'+roomId).push({text, image:img, time, senderName:myName, senderId:myPeerId});
+                setInputValue("");
             };
 
             React.useEffect(() => { messagesEndRef.current?.scrollIntoView({behavior:"smooth"}); }, [messages]);
 
             if (!isLoggedIn) return (
                 <div className="flex items-center justify-center h-screen p-6">
-                    <div className="glass p-8 rounded-[35px] w-full max-w-sm text-center">
-                        <h2 className="text-2xl font-bold mb-6 text-white italic">ZAID MASTER</h2>
-                        <input className="w-full p-4 bg-white/5 rounded-2xl mb-4 text-center outline-none text-white border border-white/10" placeholder="اسمك" value={myName} onChange={e=>setMyName(e.target.value)} />
-                        {roomId !== 'عامة' && <input className="w-full p-4 bg-blue-900/20 rounded-2xl mb-4 text-center outline-none text-blue-200 border border-blue-500/30" type="password" placeholder="كلمة سر المحادثة" value={roomPass} onChange={e=>setRoomPass(e.target.value)} />}
-                        <button onClick={checkAndLogin} className="w-full bg-blue-600 text-white p-4 rounded-2xl font-bold">دخول</button>
-                        <button onClick={()=>{const p=prompt("كلمة سر المحادثة:"); if(p){const id="prv_"+Math.random().toString(36).substr(2,5); db.ref('roomSettings/'+id).set({password:p}).then(()=>window.location.href="?room="+id)}}} className="mt-6 text-blue-400 text-sm block">+ محادثة خاصة جديدة</button>
+                    <div className="glass p-8 rounded-[40px] w-full max-w-sm text-center">
+                        <h2 className="text-3xl font-bold mb-8 italic">ZAID MASTER</h2>
+                        <input className="w-full p-4 bg-white/5 rounded-2xl mb-4 text-center outline-none border border-white/10" placeholder="اسمك المستعار" value={myName} onChange={e=>setMyName(e.target.value)} />
+                        {roomId !== 'عامة' && <input className="w-full p-4 bg-blue-900/20 rounded-2xl mb-6 text-center outline-none border border-blue-500/30" type="password" placeholder="كلمة سر المحادثة" value={roomPass} onChange={e=>setRoomPass(e.target.value)} />}
+                        <button onClick={checkAndLogin} className="w-full bg-blue-600 text-white p-4 rounded-2xl font-bold shadow-lg">دخول</button>
                     </div>
                 </div>
             );
 
             return (
-                <div className="flex flex-col h-full w-full max-w-lg mx-auto bg-[#020617] text-white">
-                    <div className="glass m-3 p-4 rounded-3xl flex justify-between items-center z-50">
+                <div className="flex flex-col h-[100dvh] w-full max-w-lg mx-auto bg-[#020617] text-white overflow-hidden">
+                    {/* Header المطور */}
+                    <div className="glass m-3 p-3 rounded-[28px] flex justify-between items-center z-50 shadow-xl">
                         <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center font-bold">{myName[0]}</div>
-                            <div><p className="font-bold text-sm">{myName}</p><p className="text-[10px] text-blue-400">محادثة خاصة</p></div>
+                            <button onClick={()=>window.location.href=window.location.pathname} className="action-btn text-blue-400"><i className="fas fa-arrow-right"></i></button>
+                            <div className="relative">
+                                {roomAvatar ? <img src={roomAvatar} className="avatar-img" /> : <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center font-bold">{roomId[0].toUpperCase()}</div>}
+                                <label className="absolute -bottom-1 -right-1 bg-blue-500 w-5 h-5 rounded-full flex items-center justify-center border-2 border-[#020617] cursor-pointer">
+                                    <i className="fas fa-camera text-[8px]"></i>
+                                    <input type="file" hidden accept="image/*" onChange={changeRoomAvatar} />
+                                </label>
+                            </div>
+                            <div className="leading-tight">
+                                <p className="font-bold text-sm">محادثة خاصة</p>
+                                <p className="text-[9px] text-blue-400 font-bold uppercase">{roomId}</p>
+                            </div>
                         </div>
-                        <div className="flex gap-4">
-                            <button onClick={async()=>{const fId=prompt("ID الطرف الآخر:"); const s=await navigator.mediaDevices.getUserMedia({video:true,audio:true}); setStream(s); const call=peerInstance.current.call(fId,s); call.on('stream',rS=>setRemoteStream(rS))}}><i className="fas fa-video"></i></button>
-                            <button onClick={()=>alert("ID الخاص بك:\n"+myPeerId)}><i className="fas fa-id-badge"></i></button>
-                            <button onClick={()=>navigator.clipboard.writeText(window.location.href)}><i className="fas fa-share-alt"></i></button>
+                        <div className="flex gap-2">
+                            <button onClick={()=>navigator.clipboard.writeText(window.location.href)} className="action-btn"><i className="fas fa-share-alt text-xs"></i></button>
+                            <button onClick={()=>alert("ID اتصالك:\n"+myPeerId)} className="action-btn"><i className="fas fa-fingerprint text-xs"></i></button>
                         </div>
                     </div>
 
-                    {(stream || remoteStream) && (
-                        <div className="absolute inset-0 z-[100] bg-black p-4 flex flex-col items-center">
-                            <div className="relative w-full h-3/4 rounded-3xl overflow-hidden">
-                                {remoteStream && <video ref={el=>el&&(el.srcObject=remoteStream)} autoPlay className="h-full w-full" />}
-                                {stream && <video ref={el=>el&&(el.srcObject=stream)} autoPlay muted className="absolute bottom-4 right-4 w-24 h-32 border-2 border-white" />}
-                            </div>
-                            <button onClick={()=>{stream?.getTracks().forEach(t=>t.stop()); setStream(null); setRemoteStream(null)}} className="mt-10 bg-red-600 w-16 h-16 rounded-full"><i className="fas fa-phone-slash"></i></button>
-                        </div>
-                    )}
-
-                    <div className="flex-1 overflow-y-auto px-4 space-y-4 no-scrollbar pb-40 pt-2">
+                    <div className="flex-1 overflow-y-auto px-4 space-y-4 no-scrollbar pb-32 pt-2 scroll-smooth">
                         {messages.map((m, i) => (
                             <div key={i} className={`flex flex-col ${m.senderId === myPeerId ? "items-end" : "items-start"}`}>
-                                <span className="text-[10px] text-blue-400 mb-1">{m.senderName}</span>
-                                <div className={`max-w-[85%] p-3 ${m.senderId === myPeerId ? "my-msg" : "other-msg"}`}>
+                                <span className="text-[10px] text-blue-400 font-bold mb-1 px-1">{m.senderName}</span>
+                                <div className={`max-w-[85%] p-3 shadow-lg ${m.senderId === myPeerId ? "my-msg" : "other-msg"}`}>
                                     {m.text && <p className="text-[16px]">{m.text}</p>}
-                                    {m.image && <img src={m.image} className="rounded-xl mt-2 max-h-60 w-full object-cover" />}
-                                    <span className="text-[9px] mt-1 block opacity-50">{m.time}</span>
+                                    {m.image && <img src={m.image} className="rounded-xl mt-2 max-h-72 w-full object-cover" />}
+                                    <span className="text-[9px] mt-1 block opacity-60">{m.time}</span>
                                 </div>
                             </div>
                         ))}
                         <div ref={messagesEndRef} />
                     </div>
 
-                    <div className="fixed bottom-0 left-0 right-0 p-4 input-container z-50">
-                        <div className="glass p-2 pr-4 rounded-[35px] flex gap-3 items-center max-w-lg mx-auto">
-                            <input type="file" id="f" hidden onChange={e=>processImage(e.target.files[0])} accept="image/*" />
-                            <button onClick={()=>document.getElementById('f').click()} className="text-blue-400 px-2"><i className="fas fa-image"></i></button>
-                            <input className="flex-1 bg-transparent p-3 outline-none" placeholder="رسالة..." value={inputValue} onChange={e=>setInputValue(e.target.value)} onKeyPress={e=>e.key==='Enter'&&handleSend(inputValue)} />
-                            <button onClick={()=>handleSend(inputValue)} className="bg-blue-600 w-12 h-12 rounded-full flex items-center justify-center active:scale-90 transition-all"><i className="fas fa-paper-plane"></i></button>
+                    <div className="fixed bottom-0 left-0 right-0 p-4 input-area z-[100]">
+                        <div className="max-w-lg mx-auto flex gap-3 items-center">
+                            <div className="glass flex-1 flex items-center rounded-[30px] px-2 border-white/20">
+                                <input type="file" id="msgFile" hidden onChange={(e)=>{
+                                    const r = new FileReader();
+                                    r.onload = (ev) => handleSend(null, ev.target.result);
+                                    r.readAsDataURL(e.target.files[0]);
+                                }} accept="image/*" />
+                                <button onClick={()=>document.getElementById('msgFile').click()} className="w-10 h-10 text-blue-400"><i className="fas fa-paperclip text-lg"></i></button>
+                                <input className="flex-1 bg-transparent p-3 outline-none text-white text-base" placeholder="اكتب رسالة..." value={inputValue} onChange={e=>setInputValue(e.target.value)} onKeyPress={e=>e.key==='Enter'&&handleSend(inputValue)} />
+                            </div>
+                            <button onClick={()=>handleSend(inputValue)} className="send-btn">
+                                <i className="fas fa-paper-plane text-white text-lg ml-1"></i>
+                            </button>
                         </div>
                     </div>
                 </div>
