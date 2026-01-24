@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Zaid Elite Pro | النسخة الكاملة</title>
+    <title>Zaid chat Pro | تطبيق دردشة احترافية </title>
     
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
@@ -135,7 +135,7 @@
             if (!isLoggedIn) return (
                 <div className="flex items-center justify-center h-screen p-6 bg-[#020617]">
                     <div className="glass p-8 rounded-[40px] w-full max-w-sm text-center shadow-2xl">
-                        <h2 className="text-3xl font-bold mb-8 italic tracking-widest text-blue-500 uppercase">Zaid Elite</h2>
+                        <h2 className="text-3xl font-bold mb-8 italic tracking-widest text-blue-500 uppercase">Zaid chat</h2>
                         <input className="w-full p-4 bg-white/5 rounded-2xl mb-4 text-center outline-none border border-white/10" placeholder="اسمك المستعار" value={myName} onChange={e=>setMyName(e.target.value)} />
                         {roomId !== 'عامة' && <input className="w-full p-4 bg-blue-900/10 rounded-2xl mb-6 text-center outline-none border border-blue-500/30" type="password" placeholder="كلمة سر المحادثة" value={roomPass} onChange={e=>setRoomPass(e.target.value)} />}
                         <button onClick={checkAndLogin} className="w-full bg-blue-600 text-white p-4 rounded-2xl font-bold">دخول</button>
