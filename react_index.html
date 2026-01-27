@@ -1,7 +1,7 @@
 <!DOCTYPE html><html lang="ar" dir="rtl"><head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Zaid chat Pro | 2026_zaid</title>
+    <title>Zaid Elite Pro | 2026</title>
     
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
@@ -17,7 +17,7 @@
         .glass { background: rgba(30, 41, 59, 0.95); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.1); }
         .my-msg { background: #2563eb; color: white; border-radius: 18px 18px 4px 18px; box-shadow: 0 4px 10px rgba(37, 99, 235, 0.2); }
         .other-msg { background: #f1f5f9; color: #0f172a; border-radius: 18px 18px 18px 4px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
-        .bot-msg { background: #1e293b; color: #3b82f6; border: 1px solid #3b82f6; border-radius: 18px 18px 18px 4px; }
+        .bot-msg { background: #1e293b; color: #3b82f6; border: 1px solid #3b82f6; border-radius: 18px 18px 18px 4px; font-weight: bold; }
         .input-area { padding-bottom: env(safe-area-inset-bottom, 24px); background: #020617; border-top: 1px solid rgba(255,255,255,0.05); }
         .send-btn { width: 56px; height: 56px; background: #2563eb; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 15px rgba(37, 99, 235, 0.4); }
         .action-btn { width: 38px; height: 38px; border-radius: 10px; background: rgba(255,255,255,0.05); display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.2s; }
@@ -29,7 +29,6 @@
     <div id="root"></div>
 
     <script type="text/babel">
-        // إعدادات Firebase
         const firebaseConfig = {
             apiKey: "AIzaSyC9IyERsk-efzo3HVTLBL9xNVTms2LaGGM",
             authDomain: "zaid-chat-3f1e3.firebaseapp.com",
@@ -40,7 +39,7 @@
         const db = firebase.database();
         const notificationSound = new Audio('https://assets.mixkit.co/active_storage/sfx/2354/2354-preview.mp3');
 
-        // مفتاح Gemini API
+        // مفتاح Gemini المحدث من صورتك
         const GEMINI_API_KEY = "AIzaSyDSRmQS9ZjClMp1j_uQUlmhmNE5Ip2gZO8"; 
 
         async function fetchAIResponse(userText) {
@@ -49,12 +48,16 @@
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        contents: [{ parts: [{ text: `أنت مساعد في دردشة زيد. رد بذكاء واختصار جداً: ${userText}` }] }]
+                        contents: [{ parts: [{ text: `أجب باختصار جداً باللغة العربية: ${userText}` }] }]
                     })
                 });
                 const data = await response.json();
+                if (data.error) throw new Error(data.error.message);
                 return data.candidates[0].content.parts[0].text;
-            } catch (e) { return "🤖 عذراً، المحرك مشغول حالياً!"; }
+            } catch (e) {
+                console.error("AI Error:", e);
+                return "🤖 أهلاً! يرجى الانتظار قليلاً لتجنب الضغط على المحرك.";
+            }
         }
 
         function App() {
@@ -90,7 +93,7 @@
             }, []);
 
             const checkAndLogin = async () => {
-                if (!myName.trim()) return alert("الرجاء كتابة اسمك هنا");
+                if (!myName.trim()) return alert("الرجاء كتابة اسمك المستعار");
                 try {
                     const snap = await db.ref('roomSettings/'+roomId).once('value');
                     const config = snap.val();
@@ -103,7 +106,7 @@
                     }
                     setIsLoggedIn(true);
                     setupChat();
-                } catch (e) { alert("خطأ في الاتصال بقاعدة البيانات"); }
+                } catch (e) { alert("خطأ في قاعدة البيانات"); }
             };
 
             const setupChat = () => {
@@ -113,16 +116,15 @@
                         const msg = snap.val();
                         setMessages(prev => [...prev, msg]);
 
-                        // رد البوت (يستبعد رسائلك ورسائل البوت نفسه)
+                        // البوت يرد فقط على الآخرين وليس عليك
                         if (msg.senderId !== myPeerId && msg.senderId !== "AI_BOT" && msg.text) {
-                            db.ref(`typing/${roomId}/bot`).set({ name: "المساعد الخاص 🤖", isTyping: true });
+                            db.ref(`typing/${roomId}/bot`).set({ name: "مساعد زيد 🤖", isTyping: true });
                             const aiReply = await fetchAIResponse(msg.text);
                             setTimeout(() => {
-                                handleSend(aiReply, null, "المساعد الخاص 🤖", "AI_BOT");
+                                handleSend(aiReply, null, "مساعد زيد 🤖", "AI_BOT");
                                 db.ref(`typing/${roomId}/bot`).set({ isTyping: false });
-                            }, 1500);
+                            }, 1000);
                         }
-
                         if(msg.senderId !== myPeerId) notificationSound.play().catch(()=>{});
                     }
                 });
@@ -149,9 +151,7 @@
                 if(!text && !img) return;
                 const time = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
                 db.ref('chats/'+roomId).push({
-                    text, 
-                    image:img, 
-                    time, 
+                    text, image:img, time, 
                     senderName: customName || myName, 
                     senderId: customId || myPeerId
                 });
@@ -163,11 +163,10 @@
             if (!isLoggedIn) return (
                 <div className="flex items-center justify-center h-screen p-6 bg-[#020617]">
                     <div className="glass p-8 rounded-[40px] w-full max-w-sm text-center shadow-2xl border border-blue-500/20">
-                        <h2 className="text-3xl font-bold mb-8 italic text-blue-500 uppercase">Zaid chat</h2>
-                        <input className="w-full p-4 bg-white/5 rounded-2xl mb-4 text-center outline-none border border-white/10 focus:border-blue-500 transition-all" placeholder="اسمك المستعار" value={myName} onChange={e=>setMyName(e.target.value)} />
-                        {roomId !== 'عامة' && <input className="w-full p-4 bg-blue-900/10 rounded-2xl mb-6 text-center outline-none border border-blue-500/30 focus:border-blue-500 transition-all" type="password" placeholder="كلمة سر المحادثة" value={roomPass} onChange={e=>setRoomPass(e.target.value)} />}
-                        <button onClick={checkAndLogin} className="w-full bg-blue-600 text-white p-4 rounded-2xl font-bold shadow-lg hover:bg-blue-700 active:scale-95 transition-all">دخول آمن</button>
-                        <button onClick={()=>{const n=prompt("اسم المحادثة:"); const p=prompt("الباسوورد:"); if(n&&p) window.location.href=`?room=${n}`}} className="mt-6 text-blue-400 text-sm font-bold block w-full hover:underline">إنشاء محادثة خاصة جديدة +</button>
+                        <h2 className="text-3xl font-bold mb-8 italic text-blue-500 uppercase">Zaid Elite</h2>
+                        <input className="w-full p-4 bg-white/5 rounded-2xl mb-4 text-center outline-none border border-white/10" placeholder="اسمك المستعار" value={myName} onChange={e=>setMyName(e.target.value)} />
+                        {roomId !== 'عامة' && <input className="w-full p-4 bg-blue-900/10 rounded-2xl mb-6 text-center outline-none border border-blue-500/30" type="password" placeholder="كلمة السر" value={roomPass} onChange={e=>setRoomPass(e.target.value)} />}
+                        <button onClick={checkAndLogin} className="w-full bg-blue-600 text-white p-4 rounded-2xl font-bold">دخول آمن</button>
                     </div>
                 </div>
             );
@@ -177,29 +176,16 @@
                     <div className="glass m-3 p-3 rounded-[28px] flex justify-between items-center z-50">
                         <div className="flex items-center gap-3">
                             <button onClick={()=>window.location.href=window.location.pathname} className="action-btn text-blue-400"><i className="fas fa-arrow-right"></i></button>
-                            <div className="relative">
-                                {roomAvatar ? <img src={roomAvatar} className="avatar-img" /> : <div className="w-11 h-11 bg-blue-600 rounded-full flex items-center justify-center font-bold">{roomId[0].toUpperCase()}</div>}
-                                <label className="absolute -bottom-1 -right-1 bg-blue-500 w-5 h-5 rounded-full flex items-center justify-center border-2 border-[#020617] cursor-pointer">
-                                    <i className="fas fa-camera text-[8px]"></i>
-                                    <input type="file" hidden accept="image/*" onChange={(e)=>{
-                                        const r = new FileReader(); r.onload=(ev)=>db.ref('roomSettings/'+roomId).update({avatar: ev.target.result}); r.readAsDataURL(e.target.files[0]);
-                                    }} />
-                                </label>
-                            </div>
-                            <div>
-                                <p className="font-bold text-xs">محادثة خاصة</p>
-                                <p className="text-[10px] text-blue-400 font-bold uppercase">{roomId}</p>
-                            </div>
+                            {roomAvatar ? <img src={roomAvatar} className="avatar-img" /> : <div className="w-11 h-11 bg-blue-600 rounded-full flex items-center justify-center font-bold">{roomId[0].toUpperCase()}</div>}
+                            <div><p className="font-bold text-xs">محادثة خاصة</p><p className="text-[10px] text-blue-400 uppercase font-bold">{roomId}</p></div>
                         </div>
                         <div className="flex gap-2">
-                            <button onClick={()=>{const p=prompt("باسوورد جديد:"); if(p) db.ref('roomSettings/'+roomId).update({password: btoa(p)})}} className="action-btn text-yellow-500"><i className="fas fa-key text-xs"></i></button>
-                            <button onClick={async()=>{const fId=prompt("ID الطرف الآخر:"); if(fId){const s=await navigator.mediaDevices.getUserMedia({video:true,audio:true}); setStream(s); const call=peerInstance.current.call(fId,s); call.on('stream',rS=>setRemoteStream(rS))}}} className="action-btn text-blue-400"><i className="fas fa-video text-xs"></i></button>
-                            <button onClick={()=> {navigator.clipboard.writeText(window.location.href); alert("تم نسخ الرابط!")}} className="action-btn"><i className="fas fa-share-alt text-xs"></i></button>
-                            <button onClick={()=>{navigator.clipboard.writeText(myPeerId); alert("تم نسخ معرفك (ID)!")}} className="action-btn text-green-400 animate-pulse"><i className="fas fa-fingerprint text-xs"></i></button>
+                            <button onClick={async()=>{const fId=prompt("ID الطرف الآخر:"); if(fId){const s=await navigator.mediaDevices.getUserMedia({video:true,audio:true}); setStream(s); const call=peerInstance.current.call(fId,s); call.on('stream',rS=>setRemoteStream(rS))}}} className="action-btn text-blue-400"><i className="fas fa-video"></i></button>
+                            <button onClick={()=>{navigator.clipboard.writeText(window.location.href); alert("تم نسخ الرابط!")}} className="action-btn"><i className="fas fa-share-alt"></i></button>
                         </div>
                     </div>
 
-                    {typingUsers.length > 0 && <div className="px-6 text-blue-400 text-[10px] italic font-bold animate-bounce">{typingUsers.join(', ')} يكتب الآن...</div>}
+                    {typingUsers.length > 0 && <div className="px-6 text-blue-400 text-[10px] italic font-bold">{typingUsers.join(', ')} يكتب الآن...</div>}
 
                     {(stream || remoteStream) && (
                         <div className="absolute inset-0 z-[200] bg-black p-4 flex flex-col items-center justify-center">
@@ -227,14 +213,14 @@
 
                     <div className="fixed bottom-0 left-0 right-0 p-4 input-area z-[100]">
                         <div className="max-w-lg mx-auto flex gap-3 items-center">
-                            <div className="glass flex-1 flex items-center rounded-[30px] px-2 border-white/10">
+                            <div className="glass flex-1 flex items-center rounded-[30px] px-2">
                                 <input type="file" id="fMsg" hidden onChange={(e)=>{
                                     const r = new FileReader(); r.onload=(ev)=>handleSend(null, ev.target.result); r.readAsDataURL(e.target.files[0]);
                                 }} accept="image/*" />
-                                <button onClick={()=>document.getElementById('fMsg').click()} className="w-10 h-10 text-blue-400"><i className="fas fa-paperclip text-lg"></i></button>
-                                <input className="flex-1 bg-transparent p-3 outline-none text-white text-base placeholder:text-gray-500" placeholder="اكتب رسالة..." value={inputValue} onChange={onTyping} onKeyPress={e=>e.key==='Enter'&&handleSend(inputValue)} />
+                                <button onClick={()=>document.getElementById('fMsg').click()} className="w-10 h-10 text-blue-400"><i className="fas fa-paperclip"></i></button>
+                                <input className="flex-1 bg-transparent p-3 outline-none text-white text-base" placeholder="اكتب رسالة..." value={inputValue} onChange={onTyping} onKeyPress={e=>e.key==='Enter'&&handleSend(inputValue)} />
                             </div>
-                            <button onClick={()=>handleSend(inputValue)} className="send-btn active:scale-90 transition-transform"><i className="fas fa-paper-plane text-white text-lg ml-1"></i></button>
+                            <button onClick={()=>handleSend(inputValue)} className="send-btn"><i className="fas fa-paper-plane text-white text-lg ml-1"></i></button>
                         </div>
                     </div>
                 </div>
