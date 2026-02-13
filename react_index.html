@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Zaid Chat Pro | Master 2026</title>
+    <title>Zaid Chat Pro | Master Edition 2026</title>
     
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
@@ -18,60 +18,62 @@
         :root {
             --gold: #f59e0b;
             --royal: #3b82f6;
-            --bg-dark: #020617;
+            --dark-deep: #020617;
         }
 
         body, html { 
-            height: 100%; overflow: hidden; font-family: 'Segoe UI', system-ui, sans-serif; 
+            height: 100%; margin: 0; overflow: hidden; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
             background: radial-gradient(circle at top right, #1e1b4b, #020617); 
             position: fixed; width: 100%; color: white; 
         }
 
-        /* تأثيرات الزجاج المتقدمة */
-        .glass-master { 
-            background: rgba(15, 23, 42, 0.8); 
+        .glass-panel { 
+            background: rgba(15, 23, 42, 0.75); 
             backdrop-filter: blur(20px); 
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6);
         }
 
         .my-msg { 
-            background: linear-gradient(135deg, #1d4ed8, #4338ca); 
-            color: white; border-radius: 24px 24px 4px 24px;
-            box-shadow: 0 4px 15px rgba(29, 78, 216, 0.3);
+            background: linear-gradient(135deg, #2563eb, #4f46e5); 
+            color: white; border-radius: 22px 22px 4px 22px; 
+            box-shadow: 0 4px 15px rgba(37, 99, 235, 0.2); 
         }
-        
+
         .other-msg { 
-            background: rgba(30, 41, 59, 0.7); 
-            color: #f8fafc; border-radius: 24px 24px 24px 4px;
+            background: rgba(30, 41, 59, 0.8); 
+            color: #f1f5f9; border-radius: 22px 22px 22px 4px; 
             border: 1px solid rgba(255, 255, 255, 0.05);
         }
 
-        .gold-btn {
+        .gold-button {
             background: linear-gradient(135deg, #f59e0b, #b45309);
-            color: black; font-weight: bold; transition: 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            color: #000; font-weight: 800; text-transform: uppercase;
+            letter-spacing: 1px; transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
-        .gold-btn:active { transform: scale(0.92); }
+        .gold-button:active { transform: scale(0.95); }
 
-        .typing-dot {
-            width: 6px; height: 6px; background: var(--gold); border-radius: 50%;
-            display: inline-block; animation: wave 1.3s infinite ease-in-out;
+        .typing-dots span {
+            width: 5px; height: 5px; background: var(--gold); border-radius: 50%;
+            display: inline-block; animation: bounce 1.4s infinite ease-in-out both;
         }
-        @keyframes wave { 0%, 60%, 100% { transform: translateY(0); } 30% { transform: translateY(-7px); } }
+        .typing-dots span:nth-child(1) { animation-delay: -0.32s; }
+        .typing-dots span:nth-child(2) { animation-delay: -0.16s; }
+        @keyframes bounce { 0%, 80%, 100% { transform: scale(0); } 40% { transform: scale(1); } }
 
         .no-scrollbar::-webkit-scrollbar { display: none; }
-        .animate-in { animation: fadeIn 0.5s ease-out forwards; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
-        
-        input { transition: all 0.3s ease; }
-        input:focus { border-color: var(--gold) !important; box-shadow: 0 0 15px rgba(245, 158, 11, 0.2); }
+        .fade-in-up { animation: fadeInUp 0.5s ease-out; }
+        @keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+        video { border-radius: 24px; object-cover: cover; background: #000; }
+        .status-online { width: 8px; height: 8px; background: #22c55e; border-radius: 50%; display: inline-block; margin-left: 5px; box-shadow: 0 0 8px #22c55e; }
     </style>
 </head>
 <body>
     <div id="root"></div>
 
     <script type="text/babel">
-        // تهيئة Firebase
+        // إعدادات Firebase
         const firebaseConfig = {
             apiKey: "AIzaSyC9IyERsk-efzo3HVTLBL9xNVTms2LaGGM",
             authDomain: "zaid-chat-3f1e3.firebaseapp.com",
@@ -80,251 +82,239 @@
         };
         if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
-        const notify = new Audio('https://assets.mixkit.co/active_storage/sfx/2354/2354-preview.mp3');
+        const notification = new Audio('https://assets.mixkit.co/active_storage/sfx/2354/2354-preview.mp3');
 
         function App() {
             const urlParams = new URLSearchParams(window.location.search);
-            const [roomId] = React.useState(urlParams.get('room') || 'عامة');
+            const [roomId, setRoomId] = React.useState(urlParams.get('room') || 'عامة');
             const [isLoggedIn, setIsLoggedIn] = React.useState(false);
-            const [showCreateMode, setShowCreateMode] = React.useState(false);
+            const [showCreateMenu, setShowCreateMenu] = React.useState(false);
             const [myName, setMyName] = React.useState("");
             const [roomPass, setRoomPass] = React.useState("");
-            const [newRoomName, setNewRoomName] = React.useState("");
+            const [newRoomInput, setNewRoomInput] = React.useState("");
             const [messages, setMessages] = React.useState([]);
             const [inputValue, setInputValue] = React.useState("");
-            const [typingUsers, setTypingUsers] = React.useState([]);
+            const [typingList, setTypingList] = React.useState([]);
             const [myPeerId, setMyPeerId] = React.useState("");
             const [stream, setStream] = React.useState(null);
             const [remoteStream, setRemoteStream] = React.useState(null);
             
-            const peerInstance = React.useRef(null);
-            const messagesEndRef = React.useRef(null);
-            const msgSet = React.useRef(new Set());
+            const peerRef = React.useRef(null);
+            const endRef = React.useRef(null);
+            const seenMessages = React.useRef(new Set());
 
-            // إعداد مكالمات الفيديو
+            // نظام الاتصال المرئي
             React.useEffect(() => {
                 const peer = new Peer();
                 peer.on('open', id => setMyPeerId(id));
                 peer.on('call', call => {
-                    if(confirm("📲 مكالمة فيديو واردة من مبرمج آخر... هل تقبل؟")) {
+                    if(confirm("📲 مكالمة فيديو واردة... هل تريد الرد؟")) {
                         navigator.mediaDevices.getUserMedia({video:true, audio:true}).then(s => {
                             setStream(s);
                             call.answer(s);
-                            call.on('stream', rS => setRemoteStream(rS));
+                            call.on('stream', rs => setRemoteStream(rs));
                         });
                     }
                 });
-                peerInstance.current = peer;
+                peerRef.current = peer;
             }, []);
 
             // دالة الدخول الذكية
-            const handleLogin = async () => {
-                if (!myName.trim()) return alert("أدخل اسمك المستعار أولاً ✨");
+            const attemptLogin = async () => {
+                if (!myName.trim()) return alert("يرجى كتابة اسمك المستعار ✨");
                 
                 if (roomId !== 'عامة') {
-                    const snap = await db.ref('roomSettings/'+roomId).once('value');
-                    const config = snap.val();
+                    const snap = await db.ref('roomSettings/' + roomId).once('value');
+                    const data = snap.val();
                     
-                    if (config && config.password) {
-                        // الغرفة موجودة: نفحص الباسوورد
-                        if (btoa(roomPass) !== config.password && roomPass !== "ZAID_ADMIN_2026") {
-                            return alert("❌ كلمة السر خاطئة لهذه الغرفة الخاصة");
+                    if (data && data.password) {
+                        if (btoa(roomPass) !== data.password && roomPass !== "ZAID_ADMIN_2026") {
+                            return alert("❌ كلمة السر غير صحيحة لهذه الغرفة");
                         }
                     } else {
-                        // غرفة جديدة: نثبت الباسوورد المكتوب كباسوورد للغرفة
-                        if(!roomPass) return alert("يرجى تعيين كلمة سر لهذه الغرفة الجديدة");
-                        await db.ref('roomSettings/'+roomId).set({ password: btoa(roomPass) });
+                        if(!roomPass) return alert("هذه غرفة خاصة جديدة، يرجى تعيين كلمة سر لها");
+                        await db.ref('roomSettings/' + roomId).set({ password: btoa(roomPass) });
+                        alert("تم تأمين الغرفة بكلمة السر الخاصة بك ✅");
                     }
                 }
                 
                 setIsLoggedIn(true);
-                startListening();
+                initChatSystem();
             };
 
-            const startListening = () => {
-                db.ref('chats/'+roomId).on('child_added', snap => {
-                    if (!msgSet.current.has(snap.key)) {
-                        msgSet.current.add(snap.key);
+            const initChatSystem = () => {
+                db.ref('chats/' + roomId).on('child_added', snap => {
+                    if (!seenMessages.current.has(snap.key)) {
+                        seenMessages.current.add(snap.key);
                         setMessages(prev => [...prev, snap.val()]);
-                        if(snap.val().senderId !== myPeerId) notify.play().catch(()=>{});
+                        if(snap.val().senderId !== myPeerId) notification.play().catch(()=>{});
                     }
                 });
-                db.ref('typing/'+roomId).on('value', snap => {
+
+                db.ref('typing/' + roomId).on('value', snap => {
                     const data = snap.val() || {};
-                    setTypingUsers(Object.entries(data).filter(([id, v]) => id !== myPeerId && v.isTyping).map(([_, v]) => v.name));
+                    const typing = Object.entries(data)
+                        .filter(([id, v]) => id !== myPeerId && v.isTyping)
+                        .map(([_, v]) => v.name);
+                    setTypingList(typing);
                 });
             };
 
-            const sendMessage = (text, img = null) => {
+            const sendMsg = (text, img = null) => {
                 if(!text && !img) return;
                 const time = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
-                db.ref('chats/'+roomId).push({
-                    text, image:img, time, 
-                    senderName:myName, senderId:myPeerId
+                db.ref('chats/' + roomId).push({
+                    text, image: img, time,
+                    senderName: myName, senderId: myPeerId
                 });
                 setInputValue("");
                 db.ref(`typing/${roomId}/${myPeerId}`).update({ isTyping: false });
             };
 
-            React.useEffect(() => { messagesEndRef.current?.scrollIntoView({behavior:"smooth"}); }, [messages]);
+            React.useEffect(() => { endRef.current?.scrollIntoView({behavior:"smooth"}); }, [messages]);
 
-            // شاشة الدخول (المعدلة لإظهار الباسوورد دائماً)
+            // شاشة الدخول الاحترافية
             if (!isLoggedIn) return (
                 <div className="flex items-center justify-center h-screen p-6">
-                    <div className="glass-master p-10 rounded-[45px] w-full max-w-sm border-t border-white/20 animate-in text-center">
-                        <div className="mb-6 inline-flex p-5 bg-yellow-500/10 rounded-full ring-2 ring-yellow-500/20 shadow-2xl shadow-yellow-500/10">
-                            <i className="fas fa-crown text-4xl text-yellow-500"></i>
+                    <div className="glass-panel p-10 rounded-[45px] w-full max-w-sm border-t border-white/20 fade-in-up text-center">
+                        <div className="mb-6 inline-flex p-5 bg-yellow-500/10 rounded-full ring-2 ring-yellow-500/20">
+                            <i className="fas fa-shield-halved text-4xl text-yellow-500"></i>
                         </div>
-                        <h2 className="text-4xl font-black text-white mb-1 tracking-tighter uppercase">Zaid <span className="text-yellow-500">Pro</span></h2>
-                        <p className="text-gray-500 text-[9px] uppercase tracking-[0.3em] mb-8 font-bold">Secure Infrastructure 2026</p>
+                        <h2 className="text-4xl font-black text-white mb-2 tracking-tighter uppercase">Zaid <span className="text-yellow-500">Chat</span></h2>
+                        <p className="text-gray-500 text-[10px] uppercase tracking-widest mb-8">Premium Communication 2026</p>
 
-                        {!showCreateMode ? (
-                            <div className="space-y-5 animate-in">
-                                <p className="text-blue-400 text-[10px] font-bold uppercase tracking-widest border-b border-white/5 pb-2">غرفة الدردشة: {roomId}</p>
-                                
-                                <input className="w-full p-4 bg-white/5 rounded-2xl outline-none border border-white/10 text-white placeholder-gray-500" 
+                        {!showCreateMenu ? (
+                            <div className="space-y-4">
+                                <div className="text-blue-400 text-[10px] font-bold mb-2 uppercase tracking-widest border-b border-white/5 pb-2">أنت في غرفة: {roomId}</div>
+                                <input className="w-full p-4 bg-white/5 rounded-2xl outline-none border border-white/10 focus:border-yellow-500 transition-all text-white" 
                                        placeholder="اسمك المستعار" value={myName} onChange={e=>setMyName(e.target.value)} />
                                 
-                                {/* 🛠️ تظهر خانة الباسوورد هنا تلقائياً إذا كانت الغرفة خاصة */}
                                 {roomId !== 'عامة' && (
-                                    <div className="animate-in">
-                                        <input className="w-full p-4 bg-yellow-500/5 rounded-2xl outline-none border border-yellow-500/20 text-white placeholder-yellow-600/50" 
-                                               type="password" 
-                                               placeholder="أدخل كلمة سر الغرفة" 
-                                               value={roomPass} 
-                                               onChange={e=>setRoomPass(e.target.value)} />
-                                        <p className="text-[9px] text-yellow-600/70 mt-2 italic text-right px-2">* هذه الغرفة محمية بالكامل</p>
-                                    </div>
+                                    <input className="w-full p-4 bg-white/5 rounded-2xl outline-none border border-blue-500/30 focus:border-yellow-500 text-white animate-in" 
+                                           type="password" placeholder="كلمة سر الغرفة" value={roomPass} onChange={e=>setRoomPass(e.target.value)} />
                                 )}
 
-                                <button onClick={handleLogin} className="w-full gold-btn p-4 rounded-2xl shadow-xl shadow-yellow-900/20 uppercase tracking-widest text-sm">
-                                    دخول الدردشة
+                                <button onClick={attemptLogin} className="w-full gold-button p-4 rounded-2xl shadow-xl shadow-yellow-900/20 active:scale-95 transition-all">
+                                    دخول آمن
                                 </button>
                                 
-                                <button onClick={()=>setShowCreateMode(true)} className="w-full text-gray-400 text-[10px] hover:text-white transition-all pt-2 font-bold uppercase tracking-widest">
-                                    <i className="fas fa-plus-circle ml-1"></i> إنشاء محادثة خاصة جديدة
+                                <button onClick={()=>setShowCreateMenu(true)} className="w-full text-gray-500 text-xs hover:text-white transition-colors pt-4 flex items-center justify-center gap-2">
+                                    <i className="fas fa-plus-circle"></i> إنشاء محادثة خاصة جديدة
                                 </button>
                             </div>
                         ) : (
-                            <div className="space-y-5 animate-in">
-                                <p className="text-yellow-500 text-[10px] font-black uppercase tracking-widest mb-2">تجهيز قناة خاصة</p>
-                                <input className="w-full p-4 bg-white/5 rounded-2xl outline-none border border-yellow-500/30 text-white" 
-                                       placeholder="أدخل اسم الغرفة الجديدة" value={newRoomName} onChange={e=>setNewRoomName(e.target.value)} />
+                            <div className="space-y-5 fade-in-up">
+                                <div className="text-yellow-500 text-[10px] font-black uppercase tracking-widest mb-2">إعداد غرفة مشفرة</div>
+                                <input className="w-full p-4 bg-white/5 rounded-2xl outline-none border border-yellow-500/30 focus:border-yellow-500 text-white" 
+                                       placeholder="اسم الغرفة الجديدة" value={newRoomInput} onChange={e=>setNewRoomInput(e.target.value)} />
                                 
                                 <button onClick={()=>{
-                                    if(newRoomName.trim()) {
-                                        window.location.search = `?room=${encodeURIComponent(newRoomName.trim())}`;
-                                    }
-                                }} className="w-full bg-blue-600 text-white p-4 rounded-2xl font-bold shadow-lg shadow-blue-900/30">
+                                    if(newRoomInput.trim()) window.location.search = `?room=${encodeURIComponent(newRoomInput.trim())}`;
+                                }} className="w-full bg-blue-600 text-white p-4 rounded-2xl font-bold shadow-lg active:scale-95 transition-all">
                                     تأكيد وإنشاء الغرفة
                                 </button>
                                 
-                                <button onClick={()=>setShowCreateMode(false)} className="w-full text-gray-500 text-xs py-2">إلغاء والعودة</button>
+                                <button onClick={()=>setShowCreateMenu(false)} className="w-full text-gray-500 text-xs py-2 uppercase tracking-widest">إلغاء والعودة</button>
                             </div>
                         )}
                     </div>
                 </div>
             );
 
-            // واجهة الدردشة (المطورة)
+            // واجهة المحادثة الرئيسية
             return (
                 <div className="flex flex-col h-screen max-w-lg mx-auto bg-[#020617] relative">
-                    {/* Header الملكي */}
-                    <div className="glass-master m-4 p-4 rounded-[30px] flex justify-between items-center z-50">
+                    {/* Header */}
+                    <div className="glass-panel m-4 p-4 rounded-[30px] flex justify-between items-center z-50">
                         <div className="flex items-center gap-3">
-                            <div className="w-12 h-12 bg-gradient-to-br from-yellow-400 to-yellow-700 rounded-2xl flex items-center justify-center font-black text-black shadow-xl shadow-yellow-500/10">
+                            <div className="w-11 h-11 bg-gradient-to-br from-yellow-400 to-yellow-700 rounded-2xl flex items-center justify-center font-black text-black shadow-lg">
                                 {roomId[0].toUpperCase()}
                             </div>
                             <div>
-                                <h1 className="font-bold text-sm tracking-tight text-white">غرفة {roomId}</h1>
-                                <div className="flex items-center gap-1.5">
-                                    <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse shadow-[0_0_8px_#22c55e]"></span>
-                                    <span className="text-[10px] text-green-400 font-black uppercase tracking-widest">Live Connect</span>
+                                <h1 className="font-bold text-sm">غرفة {roomId}</h1>
+                                <div className="flex items-center">
+                                    <span className="status-online"></span>
+                                    <span className="text-[10px] text-green-500 font-bold uppercase tracking-widest">متصل الآن</span>
                                 </div>
                             </div>
                         </div>
                         <div className="flex gap-2">
                             <button onClick={async()=>{
-                                const id=prompt("أدخل بصمة (ID) الطرف الآخر للاتصال:");
+                                const id = prompt("أدخل ID الطرف الآخر للاتصال:");
                                 if(id){
-                                    const s=await navigator.mediaDevices.getUserMedia({video:true,audio:true});
-                                    setStream(s); const call=peerInstance.current.call(id, s);
-                                    call.on('stream', rS => setRemoteStream(rS));
+                                    const s = await navigator.mediaDevices.getUserMedia({video:true, audio:true});
+                                    setStream(s);
+                                    const call = peerRef.current.call(id, s);
+                                    call.on('stream', rs => setRemoteStream(rs));
                                 }
-                            }} className="w-11 h-11 rounded-xl bg-white/5 flex items-center justify-center text-blue-400 border border-white/5 hover:bg-white/10 transition-all">
-                                <i className="fas fa-video text-xs"></i>
-                            </button>
-                            <button onClick={()=>{navigator.clipboard.writeText(myPeerId); alert("✅ تم نسخ بصمتك التعريفية!")}} 
-                                    className="w-11 h-11 rounded-xl bg-white/5 flex items-center justify-center text-yellow-500 border border-white/5 hover:bg-white/10 transition-all">
-                                <i className="fas fa-fingerprint text-xs"></i>
-                            </button>
+                            }} className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center text-blue-400 border border-white/5"><i className="fas fa-video"></i></button>
+                            <button onClick={()=>{navigator.clipboard.writeText(myPeerId); alert("تم نسخ البصمة (ID) الخاصة بك بنجاح ✅")}} 
+                                    className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center text-yellow-500 border border-white/5"><i className="fas fa-fingerprint"></i></button>
                         </div>
                     </div>
 
-                    {/* منطقة الرسائل */}
+                    {/* Messages Area */}
                     <div className="flex-1 overflow-y-auto px-6 space-y-6 no-scrollbar pb-36 pt-2">
                         {messages.map((m, i) => (
                             <div key={i} className={`flex flex-col ${m.senderId === myPeerId ? "items-end" : "items-start"}`}>
-                                <span className="text-[9px] text-gray-500 mb-1.5 px-3 font-black uppercase tracking-tighter">{m.senderName}</span>
-                                <div className={`max-w-[88%] p-4 shadow-2xl ${m.senderId === myPeerId ? "my-msg" : "other-msg"}`}>
-                                    {m.text && <p className="text-[15px] leading-relaxed font-medium">{m.text}</p>}
-                                    {m.image && <img src={m.image} className="rounded-2xl mt-2 border border-white/10 shadow-lg object-cover max-h-72" />}
+                                <span className="text-[9px] text-gray-500 mb-1.5 px-3 font-bold uppercase tracking-tighter">{m.senderName}</span>
+                                <div className={`max-w-[85%] p-4 shadow-xl ${m.senderId === myPeerId ? "my-msg" : "other-msg"}`}>
+                                    {m.text && <p className="text-[15px] leading-relaxed">{m.text}</p>}
+                                    {m.image && <img src={m.image} className="rounded-xl mt-2 border border-white/5 max-h-64 object-cover" />}
                                     <div className="flex justify-between items-center mt-2.5 opacity-40">
-                                        <span className="text-[8px] font-mono tracking-tighter">{m.time}</span>
+                                        <span className="text-[8px] font-mono">{m.time}</span>
                                         {m.senderId === myPeerId && <i className="fas fa-check-double text-[8px] ml-1"></i>}
                                     </div>
                                 </div>
                             </div>
                         ))}
-                        <div ref={messagesEndRef} />
+                        <div ref={endRef} />
                     </div>
 
-                    {/* مؤشر الكتابة */}
-                    {typingUsers.length > 0 && (
-                        <div className="absolute bottom-28 left-8 flex items-center gap-3 bg-blue-900/30 backdrop-blur-xl py-2 px-5 rounded-full border border-blue-400/20 animate-in">
-                            <span className="text-blue-400 text-[10px] font-black uppercase">{typingUsers[0]} يكتب</span>
-                            <div className="flex gap-1.5">
-                                <span className="typing-dot" style={{animationDelay:'0s'}}></span>
-                                <span className="typing-dot" style={{animationDelay:'0.2s'}}></span>
-                                <span className="typing-dot" style={{animationDelay:'0.4s'}}></span>
-                            </div>
+                    {/* Typing Indicator */}
+                    {typingList.length > 0 && (
+                        <div className="absolute bottom-28 right-8 flex items-center gap-3 bg-blue-900/40 backdrop-blur-md py-2 px-5 rounded-full border border-blue-500/20">
+                            <span className="text-blue-400 text-[10px] font-black">{typingList[0]} يكتب...</span>
+                            <div className="typing-dots flex gap-1"><span></span><span></span><span></span></div>
                         </div>
                     )}
 
-                    {/* نظام الفيديو */}
+                    {/* Video Call UI */}
                     {(stream || remoteStream) && (
-                        <div className="absolute inset-0 z-[100] bg-black p-4 flex flex-col items-center justify-center backdrop-blur-3xl">
-                             <div className="relative w-full h-[82%] rounded-[50px] overflow-hidden shadow-2xl ring-2 ring-white/5">
+                        <div className="absolute inset-0 z-[100] bg-black p-4 flex flex-col items-center justify-center backdrop-blur-2xl">
+                             <div className="relative w-full h-[80%] rounded-[45px] overflow-hidden shadow-2xl ring-1 ring-white/10">
                                 {remoteStream && <video ref={el=>el&&(el.srcObject=remoteStream)} autoPlay className="w-full h-full object-cover" />}
-                                {stream && <video ref={el=>el&&(el.srcObject=stream)} autoPlay muted className="absolute top-8 right-8 w-32 h-48 border-2 border-white/30 rounded-[30px] object-cover shadow-2xl" />}
+                                {stream && <video ref={el=>el&&(el.srcObject=stream)} autoPlay muted className="absolute top-6 right-6 w-32 h-44 border-2 border-white/30 rounded-3xl object-cover shadow-2xl" />}
                                 <button onClick={()=>{stream?.getTracks().forEach(t=>t.stop()); setStream(null); setRemoteStream(null)}} 
-                                        className="absolute bottom-12 left-1/2 -translate-x-1/2 bg-red-600 w-18 h-18 rounded-full flex items-center justify-center shadow-2xl ring-4 ring-red-600/20 active:scale-90 transition-all">
-                                    <i className="fas fa-phone-slash text-white text-2xl"></i>
+                                        className="absolute bottom-10 left-1/2 -translate-x-1/2 bg-red-600 w-16 h-16 rounded-full flex items-center justify-center shadow-2xl ring-4 ring-red-600/20 active:scale-90 transition-all">
+                                    <i className="fas fa-phone-slash text-white text-xl"></i>
                                 </button>
                              </div>
                         </div>
                     )}
 
-                    {/* نظام الإدخال */}
-                    <div className="fixed bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-[#020617] via-[#020617]/95 to-transparent">
+                    {/* Input System */}
+                    <div className="fixed bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-[#020617] via-[#020617]/90 to-transparent">
                         <div className="max-w-lg mx-auto flex gap-3 items-center">
-                            <div className="glass-master flex-1 flex items-center rounded-[28px] px-3 border border-white/10 shadow-inner">
-                                <button onClick={()=>document.getElementById('fileInput').click()} className="p-3 text-yellow-500 hover:scale-125 transition-transform">
-                                    <i className="fas fa-cloud-upload-alt text-lg"></i>
+                            <div className="glass-panel flex-1 flex items-center rounded-[24px] px-3 border border-white/10">
+                                <button onClick={()=>document.getElementById('imgIn').click()} className="p-3 text-yellow-500 hover:scale-110 transition-transform">
+                                    <i className="fas fa-image text-lg"></i>
                                 </button>
-                                <input type="file" id="fileInput" hidden accept="image/*" onChange={e=>{
-                                    const r=new FileReader(); r.onload=ev=>sendMessage(null, ev.target.result); r.readAsDataURL(e.target.files[0]);
+                                <input type="file" id="imgIn" hidden accept="image/*" onChange={e=>{
+                                    const reader = new FileReader();
+                                    reader.onload = ev => sendMsg(null, ev.target.result);
+                                    reader.readAsDataURL(e.target.files[0]);
                                 }} />
-                                <input className="flex-1 bg-transparent p-4 outline-none text-white text-sm font-medium" 
-                                       placeholder="أرسل رسالة مشفرة..." value={inputValue} 
+                                <input className="flex-1 bg-transparent p-4 outline-none text-white text-sm" 
+                                       placeholder="رسالة مشفرة..." value={inputValue} 
                                        onChange={e=>{
                                            setInputValue(e.target.value);
                                            db.ref(`typing/${roomId}/${myPeerId}`).set({name:myName, isTyping: e.target.value.length > 0});
                                        }} 
-                                       onKeyPress={e=>e.key==='Enter'&&sendMessage(inputValue)} />
+                                       onKeyPress={e=>e.key==='Enter'&&sendMsg(inputValue)} />
                             </div>
-                            <button onClick={()=>sendMessage(inputValue)} className="w-16 h-16 gold-btn rounded-3xl shadow-2xl shadow-yellow-500/20 flex items-center justify-center">
-                                <i className="fas fa-paper-plane text-xl ml-1"></i>
+                            <button onClick={()=>sendMsg(inputValue)} className="w-14 h-14 gold-button rounded-2xl shadow-xl flex items-center justify-center">
+                                <i className="fas fa-paper-plane text-lg"></i>
                             </button>
                         </div>
                     </div>
